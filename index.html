@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>心火长明 · 青空归处</title>
+<meta name="description" content="《心火长明》在线阅读">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============ 主题变量 ============ */
+:root{
+  --accent:#e05d4e;
+  --radius:12px;
+}
+html[data-theme="light"]{
+  --bg:#f7f2e8; --text:#3b3733; --muted:#9a9187;
+  --bar-bg:rgba(255,253,248,.96); --bar-text:#4a453f; --border:#e6ded0;
+  --panel-bg:#fffdf8; --hover:rgba(0,0,0,.05);
+}
+html[data-theme="eye"]{
+  --bg:#d3e4cf; --text:#33402f; --muted:#7c8a76;
+  --bar-bg:rgba(233,243,230,.96); --bar-text:#3c4a38; --border:#c2d4bd;
+  --panel-bg:#eaf3e6; --hover:rgba(0,0,0,.05);
+}
+html[data-theme="dark"]{
+  --bg:#161616; --text:#9c9c9c; --muted:#5c5c5c;
+  --bar-bg:rgba(31,31,31,.96); --bar-text:#b5b5b5; --border:#2c2c2c;
+  --panel-bg:#1f1f1f; --hover:rgba(255,255,255,.07);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  transition:background .3s,color .3s;
+  user-select:none;-webkit-user-select:none;
+}
+
+/* ============ 阅读区 ============ */
+#stage{position:fixed;inset:0}
+
+/* 翻页模式 */
+#page-area{position:absolute;inset:0;padding:calc(18px + env(safe-area-inset-top)) 20px calc(46px + env(safe-area-inset-bottom));overflow:hidden}
+#paged-content{
+  height:100%;
+  column-fill:auto;
+  column-gap:0;
+  transition:transform .28s ease;
+  will-change:transform;
+}
+#paged-content.no-anim{transition:none}
+
+/* 滚动模式 */
+#scroll-area{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none}
+#scroll-content{max-width:680px;margin:0 auto;padding:calc(24px + env(safe-area-inset-top)) 22px calc(60vh)}
+
+body.mode-scroll #page-area{display:none}
+body.mode-scroll #scroll-area{display:block}
+
+/* 正文排版（两种模式共用） */
+.content{font-size:18px;line-height:1.9}
+.content h1{font-size:1.28em;font-weight:700;margin:0 0 1.1em;line-height:1.5}
+.content h2{font-size:1.05em;font-weight:600;margin:1.2em 0 .8em;color:var(--muted)}
+.content p{margin:0 0 .7em;text-indent:2em;text-align:justify;word-break:break-word}
+
+.font-sans .content{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif}
+.font-serif .content{font-family:"Noto Serif SC","Songti SC","STSong","SimSun",serif}
+
+/* 页脚信息（翻页模式） */
+#page-foot{
+  position:absolute;left:20px;right:20px;bottom:calc(12px + env(safe-area-inset-bottom));
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;color:var(--muted);pointer-events:none;
+}
+body.mode-scroll #page-foot{display:none}
+
+/* ============ 点击层 ============ */
+#tap-layer{position:absolute;inset:0;display:flex;z-index:5}
+#tap-layer .zone{flex:1}
+#tap-layer .zone.mid{flex:1.4}
+body.mode-scroll #tap-layer .zone.side{display:none}
+body.mode-scroll #tap-layer .zone{flex:1}
+
+/* ============ 顶栏 / 底栏 ============ */
+.bar{
+  position:absolute;left:0;right:0;z-index:20;
+  background:var(--bar-bg);color:var(--bar-text);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:transform .25s ease,background .3s;
+}
+#topbar{
+  top:0;display:flex;align-items:center;gap:8px;
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+  border-bottom:1px solid var(--border);
+}
+#topbar.hidden{transform:translateY(-110%)}
+#topbar .back{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;cursor:pointer;font-size:18px}
+#topbar .back:hover{background:var(--hover)}
+#topbar .book{font-weight:700;font-size:15px;white-space:nowrap}
+#topbar .chap{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+#bottombar{
+  bottom:0;display:flex;
+  padding:8px 4px calc(8px + env(safe-area-inset-bottom));
+  border-top:1px solid var(--border);
+}
+#bottombar.hidden{transform:translateY(110%)}
+#bottombar button{
+  flex:1;background:none;border:none;color:var(--bar-text);
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-size:12px;padding:6px 0;cursor:pointer;border-radius:8px;
+  font-family:inherit;
+}
+#bottombar button:hover{background:var(--hover)}
+#bottombar button .ic{font-size:19px;line-height:1}
+#bottombar button.on{color:var(--accent)}
+
+/* ============ 目录抽屉 ============ */
+#mask{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:30;opacity:0;pointer-events:none;transition:opacity .25s}
+#mask.show{opacity:1;pointer-events:auto}
+#drawer{
+  position:fixed;top:0;bottom:0;left:0;width:min(300px,82vw);z-index:31;
+  background:var(--panel-bg);transform:translateX(-105%);
+  transition:transform .28s ease,background .3s;
+  display:flex;flex-direction:column;
+}
+#drawer.show{transform:translateX(0)}
+#drawer .head{padding:calc(16px + env(safe-area-inset-top)) 18px 12px;border-bottom:1px solid var(--border)}
+#drawer .head .t{font-weight:700;font-size:17px}
+#drawer .head .s{font-size:12px;color:var(--muted);margin-top:4px}
+#drawer .list{flex:1;overflow-y:auto;padding:6px 0}
+#drawer .item{
+  padding:12px 18px;font-size:14.5px;cursor:pointer;color:var(--bar-text);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+#drawer .item:hover{background:var(--hover)}
+#drawer .item.cur{color:var(--accent);font-weight:600}
+
+/* ============ 设置面板 ============ */
+#sheet{
+  position:fixed;left:0;right:0;bottom:0;z-index:31;
+  background:var(--panel-bg);border-radius:var(--radius) var(--radius) 0 0;
+  padding:18px 20px calc(20px + env(safe-area-inset-bottom));
+  transform:translateY(105%);transition:transform .28s ease,background .3s;
+  max-height:76vh;overflow-y:auto;
+}
+#sheet.show{transform:translateY(0)}
+#sheet .row{margin-bottom:18px}
+#sheet .row:last-child{margin-bottom:0}
+#sheet .label{font-size:12.5px;color:var(--muted);margin-bottom:9px}
+#sheet .opts{display:flex;gap:10px}
+#sheet .opt{
+  flex:1;padding:9px 0;text-align:center;font-size:14px;cursor:pointer;
+  border:1px solid var(--border);border-radius:8px;color:var(--bar-text);
+  background:none;transition:all .15s;font-family:inherit;
+}
+#sheet .opt.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+#sheet .opt.font-sans-demo{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif}
+#sheet .opt.font-serif-demo{font-family:"Noto Serif SC","Songti SC","SimSun",serif}
+#sheet .stepper{display:flex;align-items:center;gap:14px}
+#sheet .stepper button{
+  width:44px;height:36px;border:1px solid var(--border);border-radius:8px;
+  background:none;color:var(--bar-text);font-size:16px;cursor:pointer;font-family:inherit;
+}
+#sheet .stepper .val{flex:1;text-align:center;font-size:15px}
+#sheet .swatch{width:40px;height:40px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex:none}
+#sheet .swatch.on{border-color:var(--accent)}
+.sw-light{background:#f7f2e8}.sw-eye{background:#d3e4cf}.sw-dark{background:#2a2a2a}
+
+/* ============ 提示 ============ */
+#toast{
+  position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:50;
+  background:rgba(0,0,0,.72);color:#fff;font-size:13.5px;
+  padding:9px 18px;border-radius:20px;opacity:0;pointer-events:none;transition:opacity .25s;
+  white-space:nowrap;
+}
+#toast.show{opacity:1}
+#loading{
+  position:fixed;inset:0;display:grid;place-items:center;z-index:40;
+  color:var(--muted);font-size:14px;pointer-events:none;
+}
+</style>
+</head>
+<body class="font-serif mode-paged">
+
+<div id="stage">
+  <!-- 翻页模式 -->
+  <div id="page-area">
+    <div id="paged-content" class="content"></div>
+  </div>
+  <!-- 滚动模式 -->
+  <div id="scroll-area">
+    <div id="scroll-content" class="content"></div>
+  </div>
+
+  <div id="page-foot">
+    <span id="foot-chap"></span>
+    <span id="foot-page"></span>
+  </div>
+
+  <!-- 点击/手势层 -->
+  <div id="tap-layer">
+    <div class="zone side" id="zone-prev"></div>
+    <div class="zone mid" id="zone-mid"></div>
+    <div class="zone side" id="zone-next"></div>
+  </div>
+
+  <!-- 顶栏 -->
+  <header id="topbar" class="bar hidden">
+    <div class="back" id="btn-back">‹</div>
+    <div class="book">心火长明</div>
+    <div class="chap" id="topbar-chap"></div>
+  </header>
+
+  <!-- 底栏 -->
+  <footer id="bottombar" class="bar hidden">
+    <button id="btn-catalog"><span class="ic">☰</span>目录</button>
+    <button id="btn-mode"><span class="ic">⤢</span><span id="mode-label">滚动</span></button>
+    <button id="btn-theme"><span class="ic">☾</span><span id="theme-label">夜间</span></button>
+    <button id="btn-settings"><span class="ic">Aa</span>设置</button>
+  </footer>
+</div>
+
+<!-- 目录 -->
+<aside id="drawer">
+  <div class="head">
+    <div class="t">心火长明</div>
+    <div class="s">青空归处 · 共 <span id="chap-count"></span> 章</div>
+  </div>
+  <div class="list" id="catalog"></div>
+</aside>
+
+<!-- 设置面板 -->
+<div id="sheet">
+  <div class="row">
+    <div class="label">字体</div>
+    <div class="opts">
+      <button class="opt font-sans-demo" data-font="sans">黑体</button>
+      <button class="opt font-serif-demo" data-font="serif">宋体</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="label">字号</div>
+    <div class="stepper">
+      <button id="fs-minus">A−</button>
+      <div class="val"><span id="fs-val">18</span> px</div>
+      <button id="fs-plus">A＋</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="label">行距</div>
+    <div class="opts">
+      <button class="opt" data-lh="1.6">紧凑</button>
+      <button class="opt" data-lh="1.9">标准</button>
+      <button class="opt" data-lh="2.3">宽松</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="label">背景</div>
+    <div class="opts" style="justify-content:flex-start">
+      <div class="swatch sw-light" data-theme-opt="light" title="白天"></div>
+      <div class="swatch sw-eye" data-theme-opt="eye" title="护眼"></div>
+      <div class="swatch sw-dark" data-theme-opt="dark" title="夜间"></div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="label">翻页方式</div>
+    <div class="opts">
+      <button class="opt" data-mode="paged">仿真翻页</button>
+      <button class="opt" data-mode="scroll">上下滚动</button>
+    </div>
+  </div>
+</div>
+
+<div id="mask"></div>
+<div id="toast"></div>
+<div id="loading">加载中…</div>
+
+<script>
+/* ================================================================
+ * 章节清单：新章节发布后，在数组末尾追加一行文件名即可
+ * ============================================================== */
+const BOOK = {
+  title: '心火长明',
+  dir: '心火长明',
+  chapters: [
+    '0_落地过猛.md',
+    '1_从捡到小狐娘开始.md',
+    '2_不速之客.md',
+    '3_休养.md',
+    '4_再遇.md',
+    '5_跟踪.md',
+    '6_冒险家狐狐.md',
+    '7_冒险家猫猫.md',
+    '8_要更新了.md',
+    '9_卸下伪装.md',
+    '10_白虹城.md',
+    '11_全副武装.md',
+  ]
+};
+
+/* ================= 状态 ================= */
+const LS_KEY = 'xinhuo-reader-v1';
+const state = Object.assign({
+  chapter: 0,      // 当前章节索引
+  ratio: 0,        // 章节内进度 0~1
+  mode: 'paged',   // paged | scroll
+  theme: 'light',  // light | eye | dark
+  font: 'serif',   // sans | serif
+  fontSize: 18,
+  lineHeight: 1.9,
+}, loadState());
+
+let totalPages = 1, curPage = 0;
+let blocksCache = {};   // 章节解析缓存
+
+function loadState(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }catch(e){ return {}; } }
+function saveState(){
+  state.ratio = currentRatio();
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+}
+
+/* ================= 工具 ================= */
+const $ = s => document.querySelector(s);
+function escapeHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function chapterTitle(file){
+  return file.replace(/\.md$/,'').replace(/^\d+_/,'');
+}
+let toastTimer = null;
+function toast(msg){
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 1600);
+}
+
+/* ================= 章节加载与解析 ================= */
+async function loadBlocks(idx){
+  if(blocksCache[idx]) return blocksCache[idx];
+  const file = BOOK.chapters[idx];
+  const url = encodeURIComponent(BOOK.dir) + '/' + encodeURIComponent(file);
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  let text = await res.text();
+  // 去除修订批注（HTML 注释）
+  text = text.replace(/<!--[\s\S]*?-->/g, '');
+  const blocks = [];
+  for(const raw of text.split(/\n{2,}|\r\n{2,}/)){
+    const block = raw.trim();
+    if(!block) continue;
+    if(block.startsWith('# '))       blocks.push({t:'h1', x:block.slice(2).trim()});
+    else if(block.startsWith('## ')) blocks.push({t:'h2', x:block.slice(3).trim()});
+    else {
+      // 同一块内的单行合并（兼容段内单换行）
+      for(const line of block.split(/\r?\n/)){
+        const l = line.trim();
+        if(l) blocks.push({t:'p', x:l});
+      }
+    }
+  }
+  blocksCache[idx] = blocks;
+  return blocks;
+}
+
+function renderBlocks(blocks){
+  return blocks.map(b=>{
+    if(b.t==='h1') return '<h1>'+escapeHtml(b.x)+'</h1>';
+    if(b.t==='h2') return '<h2>'+escapeHtml(b.x)+'</h2>';
+    return '<p>'+escapeHtml(b.x)+'</p>';
+  }).join('');
+}
+
+/* ================= 渲染与翻页布局 ================= */
+async function showChapter(idx, ratio){
+  idx = Math.max(0, Math.min(BOOK.chapters.length-1, idx));
+  state.chapter = idx;
+  $('#loading').style.display = 'grid';
+  try{
+    const blocks = await loadBlocks(idx);
+    const html = renderBlocks(blocks);
+    $('#paged-content').innerHTML = html;
+    $('#scroll-content').innerHTML = html;
+    const title = chapterTitle(BOOK.chapters[idx]);
+    $('#topbar-chap').textContent = title;
+    $('#foot-chap').textContent = title;
+    document.title = title + ' · 心火长明';
+    markCatalogCurrent();
+    if(state.mode === 'paged'){
+      $('#scroll-area').scrollTop = 0;
+      requestAnimationFrame(()=>{
+        layoutPages();
+        setPageFromRatio(ratio == null ? 0 : ratio, false);
+        $('#loading').style.display = 'none';
+      });
+    }else{
+      $('#paged-content').style.transform = 'translateX(0)';
+      requestAnimationFrame(()=>{
+        const area = $('#scroll-area');
+        const max = area.scrollHeight - area.clientHeight;
+        area.scrollTop = max > 0 ? (ratio||0) * max : 0;
+        $('#loading').style.display = 'none';
+      });
+    }
+    saveState();
+  }catch(e){
+    $('#loading').textContent = '章节加载失败：' + e.message;
+  }
+}
+
+function layoutPages(){
+  const el = $('#paged-content');
+  const w = el.clientWidth;
+  if(w <= 0) return;
+  el.style.columnWidth = w + 'px';
+  // 强制重排后测量
+  void el.offsetHeight;
+  totalPages = Math.max(1, Math.ceil(el.scrollWidth / w));
+}
+
+function setPage(p, anim){
+  p = Math.max(0, Math.min(totalPages-1, p));
+  curPage = p;
+  const el = $('#paged-content');
+  el.classList.toggle('no-anim', anim === false);
+  el.style.transform = 'translateX(' + (-p * el.clientWidth) + 'px)';
+  if(anim === false) requestAnimationFrame(()=>el.classList.remove('no-anim'));
+  $('#foot-page').textContent = (p+1) + ' / ' + totalPages;
+  saveState();
+}
+function setPageFromRatio(r, anim){
+  setPage(Math.round(r * Math.max(0, totalPages-1)), anim);
+}
+function currentRatio(){
+  if(state.mode === 'paged'){
+    return totalPages > 1 ? curPage / (totalPages-1) : 0;
+  }
+  const area = $('#scroll-area');
+  const max = area.scrollHeight - area.clientHeight;
+  return max > 0 ? area.scrollTop / max : 0;
+}
+
+function nextPage(){
+  if(curPage < totalPages-1){ setPage(curPage+1); }
+  else if(state.chapter < BOOK.chapters.length-1){ showChapter(state.chapter+1, 0); }
+  else toast('已经是最后一章了');
+}
+function prevPage(){
+  if(curPage > 0){ setPage(curPage-1); }
+  else if(state.chapter > 0){
+    // 去上一章末尾
+    showChapter(state.chapter-1, 1);
+  } else toast('已经是第一章了');
+}
+
+/* ================= 界面开关 ================= */
+let uiVisible = false;
+function showUI(){
+  uiVisible = true;
+  $('#topbar').classList.remove('hidden');
+  $('#bottombar').classList.remove('hidden');
+}
+function hideUI(){
+  uiVisible = false;
+  $('#topbar').classList.add('hidden');
+  $('#bottombar').classList.add('hidden');
+  closePanels();
+}
+function toggleUI(){ uiVisible ? hideUI() : showUI(); }
+function closePanels(){
+  $('#drawer').classList.remove('show');
+  $('#sheet').classList.remove('show');
+  $('#mask').classList.remove('show');
+}
+function openDrawer(){
+  $('#sheet').classList.remove('show');
+  $('#drawer').classList.add('show');
+  $('#mask').classList.add('show');
+  const cur = $('#catalog .item.cur');
+  if(cur) cur.scrollIntoView({block:'center'});
+}
+function openSheet(){
+  $('#drawer').classList.remove('show');
+  $('#sheet').classList.add('show');
+  $('#mask').classList.add('show');
+}
+
+/* ================= 设置应用 ================= */
+function applySettings(){
+  document.documentElement.dataset.theme = state.theme;
+  document.body.classList.toggle('mode-scroll', state.mode === 'scroll');
+  document.body.classList.toggle('mode-paged', state.mode === 'paged');
+  document.body.classList.toggle('font-sans', state.font === 'sans');
+  document.body.classList.toggle('font-serif', state.font === 'serif');
+  for(const el of document.querySelectorAll('.content')){
+    el.style.fontSize = state.fontSize + 'px';
+    el.style.lineHeight = state.lineHeight;
+  }
+  // 底栏标签
+  $('#mode-label').textContent = state.mode === 'paged' ? '滚动' : '翻页';
+  const themeMap = {light:'夜间', eye:'白天', dark:'护眼'};
+  const iconMap = {light:'☾', eye:'☀', dark:'☘'};
+  $('#theme-label').textContent = themeMap[state.theme];
+  $('#btn-theme .ic').textContent = iconMap[state.theme];
+  // 设置面板选中态
+  $('#fs-val').textContent = state.fontSize;
+  document.querySelectorAll('#sheet [data-font]').forEach(b=>b.classList.toggle('on', b.dataset.font === state.font));
+  document.querySelectorAll('#sheet [data-lh]').forEach(b=>b.classList.toggle('on', Math.abs(parseFloat(b.dataset.lh) - state.lineHeight) < 0.01));
+  document.querySelectorAll('#sheet [data-theme-opt]').forEach(b=>b.classList.toggle('on', b.dataset.themeOpt === state.theme));
+  document.querySelectorAll('#sheet [data-mode]').forEach(b=>b.classList.toggle('on', b.dataset.mode === state.mode));
+}
+
+function relayout(){
+  if(state.mode === 'paged'){
+    const r = currentRatio();
+    layoutPages();
+    setPageFromRatio(r, false);
+  }
+}
+
+/* ================= 目录 ================= */
+function buildCatalog(){
+  $('#chap-count').textContent = BOOK.chapters.length;
+  const box = $('#catalog');
+  box.innerHTML = '';
+  BOOK.chapters.forEach((file, i)=>{
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.textContent = chapterTitle(file);
+    div.addEventListener('click', ()=>{
+      closePanels(); hideUI();
+      showChapter(i, 0);
+    });
+    box.appendChild(div);
+  });
+}
+function markCatalogCurrent(){
+  document.querySelectorAll('#catalog .item').forEach((el,i)=>{
+    el.classList.toggle('cur', i === state.chapter);
+  });
+}
+
+/* ================= 事件绑定 ================= */
+// 点击区域
+$('#zone-prev').addEventListener('click', ()=>{ if(!uiVisible) prevPage(); });
+$('#zone-next').addEventListener('click', ()=>{ if(!uiVisible) nextPage(); });
+$('#zone-mid').addEventListener('click', toggleUI);
+
+// 滑动手势（翻页模式）
+let touchX = 0, touchY = 0;
+$('#stage').addEventListener('touchstart', e=>{
+  touchX = e.touches[0].clientX; touchY = e.touches[0].clientY;
+}, {passive:true});
+$('#stage').addEventListener('touchend', e=>{
+  if(state.mode !== 'paged' || uiVisible) return;
+  const dx = e.changedTouches[0].clientX - touchX;
+  const dy = e.changedTouches[0].clientY - touchY;
+  if(Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4){
+    dx < 0 ? nextPage() : prevPage();
+  }
+}, {passive:true});
+
+// 键盘
+document.addEventListener('keydown', e=>{
+  if(e.key === 'ArrowRight' || e.key === 'PageDown'){ state.mode==='paged' ? nextPage() : $('#scroll-area').scrollBy({top:innerHeight*0.9,behavior:'smooth'}); }
+  else if(e.key === 'ArrowLeft' || e.key === 'PageUp'){ state.mode==='paged' ? prevPage() : $('#scroll-area').scrollBy({top:-innerHeight*0.9,behavior:'smooth'}); }
+  else if(e.key === 'Escape'){ closePanels(); hideUI(); }
+});
+
+// 底栏
+$('#btn-catalog').addEventListener('click', openDrawer);
+$('#btn-settings').addEventListener('click', openSheet);
+$('#btn-back').addEventListener('click', ()=>{ hideUI(); });
+$('#btn-mode').addEventListener('click', ()=>{
+  const r = currentRatio();
+  state.mode = state.mode === 'paged' ? 'scroll' : 'paged';
+  applySettings();
+  showChapter(state.chapter, r);
+});
+$('#btn-theme').addEventListener('click', ()=>{
+  state.theme = state.theme === 'light' ? 'dark' : (state.theme === 'dark' ? 'eye' : 'light');
+  applySettings(); saveState();
+});
+
+// 遮罩
+$('#mask').addEventListener('click', closePanels);
+
+// 设置面板
+document.querySelectorAll('#sheet [data-font]').forEach(b=>b.addEventListener('click', ()=>{
+  state.font = b.dataset.font; applySettings(); relayout(); saveState();
+}));
+document.querySelectorAll('#sheet [data-lh]').forEach(b=>b.addEventListener('click', ()=>{
+  state.lineHeight = parseFloat(b.dataset.lh); applySettings(); relayout(); saveState();
+}));
+document.querySelectorAll('#sheet [data-theme-opt]').forEach(b=>b.addEventListener('click', ()=>{
+  state.theme = b.dataset.themeOpt; applySettings(); saveState();
+}));
+document.querySelectorAll('#sheet [data-mode]').forEach(b=>b.addEventListener('click', ()=>{
+  if(b.dataset.mode !== state.mode){
+    const r = currentRatio();
+    state.mode = b.dataset.mode;
+    applySettings();
+    showChapter(state.chapter, r);
+  }
+}));
+$('#fs-minus').addEventListener('click', ()=>{
+  state.fontSize = Math.max(14, state.fontSize - 1);
+  applySettings(); relayout(); saveState();
+});
+$('#fs-plus').addEventListener('click', ()=>{
+  state.fontSize = Math.min(28, state.fontSize + 1);
+  applySettings(); relayout(); saveState();
+});
+
+// 滚动模式：记录进度
+let scrollSaveTimer = null;
+$('#scroll-area').addEventListener('scroll', ()=>{
+  clearTimeout(scrollSaveTimer);
+  scrollSaveTimer = setTimeout(saveState, 400);
+}, {passive:true});
+
+// 窗口尺寸变化
+let resizeTimer = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(relayout, 150);
+});
+window.addEventListener('beforeunload', saveState);
+
+/* ================= 启动 ================= */
+if(location.protocol === 'file:'){
+  $('#loading').textContent = '请通过本地服务器或 GitHub Pages 访问（file:// 协议无法加载章节）';
+}else{
+  buildCatalog();
+  applySettings();
+  showChapter(state.chapter, state.ratio);
+}
+</script>
+</body>
+</html>
