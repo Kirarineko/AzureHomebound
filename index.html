@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-<title>心火长明 · 青空归处</title>
+<title>青空归处：心火长明</title>
 <meta name="description" content="《心火长明》在线阅读">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -42,16 +42,32 @@ body{
 /* ============ 阅读区 ============ */
 #stage{position:fixed;inset:0}
 
-/* 翻页模式 */
-#page-area{position:absolute;inset:0;padding:calc(18px + env(safe-area-inset-top)) 20px calc(46px + env(safe-area-inset-bottom));overflow:hidden}
-#paged-content{
-  height:100%;
-  column-fill:auto;
-  column-gap:0;
-  transition:transform .28s ease;
-  will-change:transform;
+/* 翻页模式：上下两层真实页面 */
+#page-area{
+  position:absolute;inset:0;
+  padding:calc(18px + env(safe-area-inset-top)) 20px calc(46px + env(safe-area-inset-bottom));
+  overflow:hidden;
 }
-#paged-content.no-anim{transition:none}
+.page{
+  position:absolute;
+  top:calc(18px + env(safe-area-inset-top));
+  bottom:calc(46px + env(safe-area-inset-bottom));
+  left:20px;right:20px;
+  overflow:hidden;
+  background:var(--bg);
+  transition:background .3s;
+}
+#page-under{z-index:1}
+#page-over{z-index:2}
+/* 垫在底下的页面：缩小 + 模糊 + 变暗 */
+.page.zoom{
+  transform:scale(.94);
+  filter:blur(4px);
+  opacity:.7;
+}
+/* 正在滑走的页面：投影增强层次 */
+.page.sliding-next{box-shadow:-14px 0 30px rgba(0,0,0,.22)}
+.page.sliding-prev{box-shadow:14px 0 30px rgba(0,0,0,.22)}
 
 /* 滚动模式 */
 #scroll-area{position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:none}
@@ -66,14 +82,17 @@ body.mode-scroll #scroll-area{display:block}
 .content h2{font-size:1.05em;font-weight:600;margin:1.2em 0 .8em;color:var(--muted)}
 .content p{margin:0 0 .7em;text-indent:2em;text-align:justify;word-break:break-word}
 
-.font-sans .content{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif}
-.font-serif .content{font-family:"Noto Serif SC","Songti SC","STSong","SimSun",serif}
+.font-sans .content, .content.font-sans{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif}
+.font-serif .content, .content.font-serif{font-family:"Noto Serif SC","Songti SC","STSong","SimSun",serif}
+
+/* 分页测量容器（不可见） */
+#measurer{position:absolute;left:-99999px;top:0;visibility:hidden;pointer-events:none}
 
 /* 页脚信息（翻页模式） */
 #page-foot{
   position:absolute;left:20px;right:20px;bottom:calc(12px + env(safe-area-inset-bottom));
   display:flex;justify-content:space-between;align-items:center;
-  font-size:12px;color:var(--muted);pointer-events:none;
+  font-size:12px;color:var(--muted);pointer-events:none;z-index:3;
 }
 body.mode-scroll #page-foot{display:none}
 
@@ -187,10 +206,13 @@ body.mode-scroll #tap-layer .zone{flex:1}
 <body class="font-serif mode-paged">
 
 <div id="stage">
-  <!-- 翻页模式 -->
+  <!-- 翻页模式：双层页面 -->
   <div id="page-area">
-    <div id="paged-content" class="content"></div>
+    <div id="page-under" class="page content zoom"></div>
+    <div id="page-over" class="page content"></div>
   </div>
+  <!-- 分页测量容器 -->
+  <div id="measurer" class="content"></div>
   <!-- 滚动模式 -->
   <div id="scroll-area">
     <div id="scroll-content" class="content"></div>
@@ -228,7 +250,7 @@ body.mode-scroll #tap-layer .zone{flex:1}
 <aside id="drawer">
   <div class="head">
     <div class="t">心火长明</div>
-    <div class="s">青空归处 · 共 <span id="chap-count"></span> 章</div>
+    <div class="s" id="drawer-sub">青空归处 · 共 <span id="chap-count"></span> 章</div>
   </div>
   <div class="list" id="catalog"></div>
 </aside>
@@ -284,7 +306,8 @@ body.mode-scroll #tap-layer .zone{flex:1}
  * 章节清单：新章节发布后，在数组末尾追加一行文件名即可
  * ============================================================== */
 const BOOK = {
-  title: '心火长明',
+  series: '青空归处',   // 系列名（总书名）
+  volume: '心火长明',   // 部名（第一部），之后出续部时改这里即可
   dir: '心火长明',
   chapters: [
     '0_落地过猛.md',
@@ -314,8 +337,11 @@ const state = Object.assign({
   lineHeight: 1.9,
 }, loadState());
 
-let totalPages = 1, curPage = 0;
-let blocksCache = {};   // 章节解析缓存
+let pages = [];        // 当前章节的分页结果（HTML 字符串数组）
+let curPage = 0;
+let animating = false; // 翻页动画进行中
+let blocksCache = {};  // 章节解析缓存
+let pageCache = {};    // 分页结果缓存：layoutKey -> pages
 
 function loadState(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || {}; }catch(e){ return {}; } }
 function saveState(){
@@ -356,7 +382,6 @@ async function loadBlocks(idx){
     if(block.startsWith('# '))       blocks.push({t:'h1', x:block.slice(2).trim()});
     else if(block.startsWith('## ')) blocks.push({t:'h2', x:block.slice(3).trim()});
     else {
-      // 同一块内的单行合并（兼容段内单换行）
       for(const line of block.split(/\r?\n/)){
         const l = line.trim();
         if(l) blocks.push({t:'p', x:l});
@@ -374,87 +399,220 @@ function renderBlocks(blocks){
     return '<p>'+escapeHtml(b.x)+'</p>';
   }).join('');
 }
+function blockHtml(b){
+  if(b.t==='h1') return '<h1>'+escapeHtml(b.x)+'</h1>';
+  if(b.t==='h2') return '<h2>'+escapeHtml(b.x)+'</h2>';
+  return '<p>'+escapeHtml(b.x)+'</p>';
+}
 
-/* ================= 渲染与翻页布局 ================= */
-async function showChapter(idx, ratio){
-  idx = Math.max(0, Math.min(BOOK.chapters.length-1, idx));
-  state.chapter = idx;
-  $('#loading').style.display = 'grid';
-  try{
-    const blocks = await loadBlocks(idx);
-    const html = renderBlocks(blocks);
-    $('#paged-content').innerHTML = html;
-    $('#scroll-content').innerHTML = html;
-    const title = chapterTitle(BOOK.chapters[idx]);
-    $('#topbar-chap').textContent = title;
-    $('#foot-chap').textContent = title;
-    document.title = title + ' · 心火长明';
-    markCatalogCurrent();
-    if(state.mode === 'paged'){
-      $('#scroll-area').scrollTop = 0;
-      requestAnimationFrame(()=>{
-        layoutPages();
-        setPageFromRatio(ratio == null ? 0 : ratio, false);
-        $('#loading').style.display = 'none';
-      });
+/* ================= 手动分页 =================
+ * 逐块放入不可见的测量容器，高度超出页面高度即换页。
+ * 每页是独立的真实 DOM，杜绝多列分页的边缘漏字问题。
+ * ============================================================== */
+function layoutKey(idx){
+  return [idx, state.font, state.fontSize, state.lineHeight,
+          $('#page-over').clientWidth, $('#page-over').clientHeight].join('|');
+}
+
+function paginate(idx, blocks){
+  const key = layoutKey(idx);
+  if(pageCache[key]) return pageCache[key];
+
+  const meas = $('#measurer');
+  const H = $('#page-over').clientHeight;
+  meas.style.width = $('#page-over').clientWidth + 'px';
+  meas.style.fontSize = state.fontSize + 'px';
+  meas.style.lineHeight = state.lineHeight;
+  meas.style.fontFamily = getComputedStyle($('#page-over')).fontFamily;
+  meas.innerHTML = '';
+
+  const holder = document.createElement('div');
+  holder.style.display = 'flow-root'; // 防止子元素 margin 坍缩影响测量
+  meas.appendChild(holder);
+
+  const result = [];
+  let curHtml = [];
+  for(const b of blocks){
+    const node = document.createElement(b.t);
+    node.textContent = b.x;
+    holder.appendChild(node);
+    if(holder.offsetHeight > H && holder.children.length > 1){
+      // 超出：该块移到下一页
+      holder.removeChild(node);
+      result.push(curHtml.join(''));
+      holder.innerHTML = '';
+      holder.appendChild(node);
+      curHtml = [blockHtml(b)];
     }else{
-      $('#paged-content').style.transform = 'translateX(0)';
-      requestAnimationFrame(()=>{
-        const area = $('#scroll-area');
-        const max = area.scrollHeight - area.clientHeight;
-        area.scrollTop = max > 0 ? (ratio||0) * max : 0;
-        $('#loading').style.display = 'none';
-      });
+      curHtml.push(blockHtml(b));
     }
-    saveState();
-  }catch(e){
-    $('#loading').textContent = '章节加载失败：' + e.message;
   }
+  if(curHtml.length) result.push(curHtml.join(''));
+  if(!result.length) result.push('');
+
+  meas.innerHTML = '';
+  // 缓存控制：最多保留 20 组分页结果
+  const keys = Object.keys(pageCache);
+  if(keys.length > 20) delete pageCache[keys[0]];
+  pageCache[key] = result;
+  return result;
 }
 
-function layoutPages(){
-  const el = $('#paged-content');
-  const w = el.clientWidth;
-  if(w <= 0) return;
-  el.style.columnWidth = w + 'px';
-  // 强制重排后测量
-  void el.offsetHeight;
-  totalPages = Math.max(1, Math.ceil(el.scrollWidth / w));
+/* ================= 翻页动画 =================
+ * 上一页滑走；下一页缩小 + 模糊垫在底下，
+ * 上一页完全离开后再放大回原值并变清晰。
+ * ============================================================== */
+function slideTurn(targetHtml, dir){
+  return new Promise(resolve=>{
+    const over = $('#page-over'), under = $('#page-under');
+    animating = true;
+
+    under.innerHTML = targetHtml;
+    under.style.transition = 'none';
+    under.classList.add('zoom');
+    over.style.transition = 'none';
+    over.style.transform = 'translateX(0)';
+    over.classList.add(dir > 0 ? 'sliding-next' : 'sliding-prev');
+    void over.offsetHeight; // 强制重排，确保初始状态生效
+
+    // 第一阶段：当前页滑出屏幕
+    over.style.transition = 'transform .32s cubic-bezier(.25,.6,.3,1)';
+    over.style.transform = 'translateX(' + (dir > 0 ? '-103%' : '103%') + ')';
+
+    const onOver = e=>{
+      if(e.propertyName !== 'transform') return;
+      over.removeEventListener('transitionend', onOver);
+      // 第二阶段：底层页面放大回 1 并恢复清晰
+      under.style.transition = 'transform .26s ease, filter .26s ease, opacity .26s ease';
+      under.classList.remove('zoom');
+
+      const onUnder = e=>{
+        if(e.propertyName !== 'transform') return;
+        under.removeEventListener('transitionend', onUnder);
+        // 归位：顶层变为当前页，底层清空待命
+        over.style.transition = 'none';
+        over.style.transform = 'translateX(0)';
+        over.classList.remove('sliding-next','sliding-prev');
+        over.innerHTML = targetHtml;
+        under.style.transition = 'none';
+        under.innerHTML = '';
+        under.classList.add('zoom');
+        animating = false;
+        resolve();
+      };
+      under.addEventListener('transitionend', onUnder);
+    };
+    over.addEventListener('transitionend', onOver);
+  });
 }
 
-function setPage(p, anim){
-  p = Math.max(0, Math.min(totalPages-1, p));
-  curPage = p;
-  const el = $('#paged-content');
-  el.classList.toggle('no-anim', anim === false);
-  el.style.transform = 'translateX(' + (-p * el.clientWidth) + 'px)';
-  if(anim === false) requestAnimationFrame(()=>el.classList.remove('no-anim'));
-  $('#foot-page').textContent = (p+1) + ' / ' + totalPages;
-  saveState();
-}
-function setPageFromRatio(r, anim){
-  setPage(Math.round(r * Math.max(0, totalPages-1)), anim);
+/* ================= 章节显示与翻页 ================= */
+function pageFromRatio(r){
+  return Math.max(0, Math.min(pages.length-1, Math.round((r||0) * Math.max(0, pages.length-1))));
 }
 function currentRatio(){
   if(state.mode === 'paged'){
-    return totalPages > 1 ? curPage / (totalPages-1) : 0;
+    return pages.length > 1 ? curPage / (pages.length-1) : 0;
   }
   const area = $('#scroll-area');
   const max = area.scrollHeight - area.clientHeight;
   return max > 0 ? area.scrollTop / max : 0;
 }
 
+function updateChrome(){
+  const title = chapterTitle(BOOK.chapters[state.chapter]);
+  $('#topbar-chap').textContent = title;
+  $('#foot-chap').textContent = title;
+  $('#foot-page').textContent = (curPage+1) + ' / ' + Math.max(1, pages.length);
+  document.title = title + ' · ' + BOOK.series + '：' + BOOK.volume;
+  markCatalogCurrent();
+}
+
+async function showChapter(idx, ratio){
+  idx = Math.max(0, Math.min(BOOK.chapters.length-1, idx));
+  state.chapter = idx;
+  $('#loading').style.display = 'grid';
+  try{
+    const blocks = await loadBlocks(idx);
+    $('#scroll-content').innerHTML = renderBlocks(blocks);
+    if(state.mode === 'paged'){
+      pages = paginate(idx, blocks);
+      curPage = pageFromRatio(ratio);
+      $('#page-over').innerHTML = pages[curPage] || '';
+      $('#page-under').innerHTML = '';
+      $('#scroll-area').scrollTop = 0;
+    }else{
+      pages = [];
+      curPage = 0;
+      requestAnimationFrame(()=>{
+        const area = $('#scroll-area');
+        const max = area.scrollHeight - area.clientHeight;
+        area.scrollTop = max > 0 ? (ratio||0) * max : 0;
+      });
+    }
+    updateChrome();
+    $('#loading').style.display = 'none';
+    saveState();
+  }catch(e){
+    $('#loading').textContent = '章节加载失败：' + e.message;
+  }
+}
+
+/* 带动画翻到指定章节指定页 */
+async function turnTo(chap, page, dir){
+  if(animating) return;
+  animating = true;
+  try{
+    let targetPages;
+    if(chap === state.chapter){
+      targetPages = pages;
+    }else{
+      const blocks = await loadBlocks(chap);
+      targetPages = paginate(chap, blocks);
+      $('#scroll-content').innerHTML = renderBlocks(blocks);
+    }
+    page = Math.max(0, Math.min(targetPages.length-1, page));
+    const html = targetPages[page] || '';
+    animating = false; // slideTurn 内部自行管理
+    await slideTurn(html, dir);
+    state.chapter = chap;
+    pages = targetPages;
+    curPage = page;
+    updateChrome();
+    saveState();
+  }catch(e){
+    animating = false;
+    toast('加载失败：' + e.message);
+  }
+}
+
 function nextPage(){
-  if(curPage < totalPages-1){ setPage(curPage+1); }
-  else if(state.chapter < BOOK.chapters.length-1){ showChapter(state.chapter+1, 0); }
+  if(animating) return;
+  if(curPage < pages.length-1) turnTo(state.chapter, curPage+1, 1);
+  else if(state.chapter < BOOK.chapters.length-1) turnTo(state.chapter+1, 0, 1);
   else toast('已经是最后一章了');
 }
 function prevPage(){
-  if(curPage > 0){ setPage(curPage-1); }
+  if(animating) return;
+  if(curPage > 0) turnTo(state.chapter, curPage-1, -1);
   else if(state.chapter > 0){
-    // 去上一章末尾
-    showChapter(state.chapter-1, 1);
+    // 上一章末页：页数要先分页才知道，用极大值交由 turnTo 收敛
+    turnTo(state.chapter-1, 1e9, -1);
   } else toast('已经是第一章了');
+}
+
+/* 字号/行距/字体/尺寸变化后重新分页，保持阅读位置 */
+async function relayout(){
+  if(state.mode !== 'paged') return;
+  const r = currentRatio();
+  try{
+    const blocks = await loadBlocks(state.chapter);
+    pages = paginate(state.chapter, blocks);
+    curPage = pageFromRatio(r);
+    $('#page-over').innerHTML = pages[curPage] || '';
+    $('#foot-page').textContent = (curPage+1) + ' / ' + Math.max(1, pages.length);
+    saveState();
+  }catch(e){/* 忽略 */}
 }
 
 /* ================= 界面开关 ================= */
@@ -500,13 +658,11 @@ function applySettings(){
     el.style.fontSize = state.fontSize + 'px';
     el.style.lineHeight = state.lineHeight;
   }
-  // 底栏标签
   $('#mode-label').textContent = state.mode === 'paged' ? '滚动' : '翻页';
   const themeMap = {light:'夜间', eye:'白天', dark:'护眼'};
   const iconMap = {light:'☾', eye:'☀', dark:'☘'};
   $('#theme-label').textContent = themeMap[state.theme];
   $('#btn-theme .ic').textContent = iconMap[state.theme];
-  // 设置面板选中态
   $('#fs-val').textContent = state.fontSize;
   document.querySelectorAll('#sheet [data-font]').forEach(b=>b.classList.toggle('on', b.dataset.font === state.font));
   document.querySelectorAll('#sheet [data-lh]').forEach(b=>b.classList.toggle('on', Math.abs(parseFloat(b.dataset.lh) - state.lineHeight) < 0.01));
@@ -514,17 +670,19 @@ function applySettings(){
   document.querySelectorAll('#sheet [data-mode]').forEach(b=>b.classList.toggle('on', b.dataset.mode === state.mode));
 }
 
-function relayout(){
-  if(state.mode === 'paged'){
-    const r = currentRatio();
-    layoutPages();
-    setPageFromRatio(r, false);
-  }
+function switchMode(mode){
+  if(mode === state.mode) return;
+  const r = currentRatio();
+  state.mode = mode;
+  applySettings();
+  showChapter(state.chapter, r);
 }
 
 /* ================= 目录 ================= */
 function buildCatalog(){
-  $('#chap-count').textContent = BOOK.chapters.length;
+  $('#topbar .book').textContent = BOOK.series + '：' + BOOK.volume;
+  $('#drawer .head .t').textContent = BOOK.volume;   // 目录标题 = 部名
+  $('#drawer-sub').textContent = BOOK.series + ' · 共 ' + BOOK.chapters.length + ' 章';
   const box = $('#catalog');
   box.innerHTML = '';
   BOOK.chapters.forEach((file, i)=>{
@@ -545,7 +703,6 @@ function markCatalogCurrent(){
 }
 
 /* ================= 事件绑定 ================= */
-// 点击区域
 $('#zone-prev').addEventListener('click', ()=>{ if(!uiVisible) prevPage(); });
 $('#zone-next').addEventListener('click', ()=>{ if(!uiVisible) nextPage(); });
 $('#zone-mid').addEventListener('click', toggleUI);
@@ -574,12 +731,9 @@ document.addEventListener('keydown', e=>{
 // 底栏
 $('#btn-catalog').addEventListener('click', openDrawer);
 $('#btn-settings').addEventListener('click', openSheet);
-$('#btn-back').addEventListener('click', ()=>{ hideUI(); });
+$('#btn-back').addEventListener('click', hideUI);
 $('#btn-mode').addEventListener('click', ()=>{
-  const r = currentRatio();
-  state.mode = state.mode === 'paged' ? 'scroll' : 'paged';
-  applySettings();
-  showChapter(state.chapter, r);
+  switchMode(state.mode === 'paged' ? 'scroll' : 'paged');
 });
 $('#btn-theme').addEventListener('click', ()=>{
   state.theme = state.theme === 'light' ? 'dark' : (state.theme === 'dark' ? 'eye' : 'light');
@@ -600,12 +754,7 @@ document.querySelectorAll('#sheet [data-theme-opt]').forEach(b=>b.addEventListen
   state.theme = b.dataset.themeOpt; applySettings(); saveState();
 }));
 document.querySelectorAll('#sheet [data-mode]').forEach(b=>b.addEventListener('click', ()=>{
-  if(b.dataset.mode !== state.mode){
-    const r = currentRatio();
-    state.mode = b.dataset.mode;
-    applySettings();
-    showChapter(state.chapter, r);
-  }
+  switchMode(b.dataset.mode);
 }));
 $('#fs-minus').addEventListener('click', ()=>{
   state.fontSize = Math.max(14, state.fontSize - 1);
@@ -630,6 +779,11 @@ window.addEventListener('resize', ()=>{
   resizeTimer = setTimeout(relayout, 150);
 });
 window.addEventListener('beforeunload', saveState);
+
+// 网络字体加载完成后字宽会变，重新分页一次
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(()=>relayout());
+}
 
 /* ================= 启动 ================= */
 if(location.protocol === 'file:'){
