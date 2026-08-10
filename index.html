@@ -189,6 +189,20 @@ body.mode-scroll #tap-layer .zone{flex:1}
 #sheet .swatch.on{border-color:var(--accent)}
 .sw-light{background:#f7f2e8}.sw-eye{background:#d3e4cf}.sw-dark{background:#2a2a2a}
 
+/* 目录内搜索 */
+#drawer .search{display:flex;align-items:center;gap:8px;margin-top:12px;background:var(--hover);border-radius:8px;padding:7px 10px}
+#search-input{flex:1;min-width:0;border:none;background:none;outline:none;color:var(--bar-text);font-size:14px;font-family:inherit;user-select:text;-webkit-user-select:text}
+#search-input::placeholder{color:var(--muted)}
+#search-clear{border:none;background:none;color:var(--muted);font-size:17px;line-height:1;cursor:pointer;padding:0 2px;display:none}
+#search-clear.show{display:block}
+.sr-head{padding:12px 18px 6px;font-size:12px;color:var(--muted)}
+.sr-item{padding:10px 18px;cursor:pointer}
+.sr-item:hover{background:var(--hover)}
+.sr-item .c{font-size:12.5px;color:var(--accent);margin-bottom:3px}
+.sr-item .s2{font-size:13.5px;color:var(--bar-text);line-height:1.65;word-break:break-all}
+.content mark, .sr-item mark{background:#f0c33c;color:inherit;border-radius:2px;padding:0 1px}
+html[data-theme="dark"] .content mark, html[data-theme="dark"] .sr-item mark{background:#8a6d1a}
+
 /* ============ 提示 ============ */
 #toast{
   position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:50;
@@ -251,6 +265,10 @@ body.mode-scroll #tap-layer .zone{flex:1}
   <div class="head">
     <div class="t">心火长明</div>
     <div class="s" id="drawer-sub">青空归处 · 共 <span id="chap-count"></span> 章</div>
+    <div class="search">
+      <input id="search-input" type="search" placeholder="搜索书内内容" autocomplete="off">
+      <button id="search-clear" aria-label="清除">×</button>
+    </div>
   </div>
   <div class="list" id="catalog"></div>
 </aside>
@@ -303,27 +321,28 @@ body.mode-scroll #tap-layer .zone{flex:1}
 
 <script>
 /* ================================================================
- * 章节清单：新章节发布后，在数组末尾追加一行文件名即可
+ * 书与章节配置
+ * - series / volume：系列名与部名（换部只改 volume）
+ * - 章节列表启动时自动从 GitHub 仓库「心火长明/」目录读取，无需手动维护；
+ *   读取失败时退回 FALLBACK_CHAPTERS 备用清单。
  * ============================================================== */
+const GITHUB = {
+  owner: 'Kirarineko',
+  repo: 'AzureHomebound',
+};
 const BOOK = {
   series: '青空归处',   // 系列名（总书名）
   volume: '心火长明',   // 部名（第一部），之后出续部时改这里即可
   dir: '心火长明',
-  chapters: [
-    '0_落地过猛.md',
-    '1_从捡到小狐娘开始.md',
-    '2_不速之客.md',
-    '3_休养.md',
-    '4_再遇.md',
-    '5_跟踪.md',
-    '6_冒险家狐狐.md',
-    '7_冒险家猫猫.md',
-    '8_要更新了.md',
-    '9_卸下伪装.md',
-    '10_白虹城.md',
-    '11_全副武装.md',
-  ]
+  chapters: null,       // 启动时填充 [{file, url}]
 };
+// 备用清单（仅当 GitHub API 不可用时使用）
+const FALLBACK_CHAPTERS = [
+  '0_落地过猛.md','1_从捡到小狐娘开始.md','2_不速之客.md','3_休养.md',
+  '4_再遇.md','5_跟踪.md','6_冒险家狐狐.md','7_冒险家猫猫.md',
+  '8_要更新了.md','9_卸下伪装.md','10_白虹城.md','11_全副武装.md',
+  '12_启航！.md'
+];
 
 /* ================= 状态 ================= */
 const LS_KEY = 'xinhuo-reader-v1';
@@ -354,8 +373,9 @@ const $ = s => document.querySelector(s);
 function escapeHtml(s){
   return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
-function chapterTitle(file){
-  return file.replace(/\.md$/,'').replace(/^\d+_/,'');
+function chapterFile(i){ return BOOK.chapters[i].file; }
+function chapterTitle(i){
+  return chapterFile(i).replace(/\.md$/,'').replace(/^\d+_/,'');
 }
 let toastTimer = null;
 function toast(msg){
@@ -368,9 +388,9 @@ function toast(msg){
 /* ================= 章节加载与解析 ================= */
 async function loadBlocks(idx){
   if(blocksCache[idx]) return blocksCache[idx];
-  const file = BOOK.chapters[idx];
-  const url = encodeURIComponent(BOOK.dir) + '/' + encodeURIComponent(file);
-  const res = await fetch(url);
+  const entry = BOOK.chapters[idx];
+  // 优先用 GitHub raw 直链（跨域可用），否则退回同源相对路径
+  const res = await fetch(entry.url || (encodeURIComponent(BOOK.dir) + '/' + encodeURIComponent(entry.file)));
   if(!res.ok) throw new Error('HTTP ' + res.status);
   let text = await res.text();
   // 去除修订批注（HTML 注释）
@@ -432,23 +452,26 @@ function paginate(idx, blocks){
 
   const result = [];
   let curHtml = [];
-  for(const b of blocks){
+  let curStart = 0;
+  for(let bi=0; bi<blocks.length; bi++){
+    const b = blocks[bi];
     const node = document.createElement(b.t);
     node.textContent = b.x;
     holder.appendChild(node);
     if(holder.offsetHeight > H && holder.children.length > 1){
       // 超出：该块移到下一页
       holder.removeChild(node);
-      result.push(curHtml.join(''));
+      result.push({html: curHtml.join(''), start: curStart});
       holder.innerHTML = '';
       holder.appendChild(node);
+      curStart = bi;
       curHtml = [blockHtml(b)];
     }else{
       curHtml.push(blockHtml(b));
     }
   }
-  if(curHtml.length) result.push(curHtml.join(''));
-  if(!result.length) result.push('');
+  if(curHtml.length) result.push({html: curHtml.join(''), start: curStart});
+  if(!result.length) result.push({html:'', start:0});
 
   meas.innerHTML = '';
   // 缓存控制：最多保留 20 组分页结果
@@ -520,7 +543,7 @@ function currentRatio(){
 }
 
 function updateChrome(){
-  const title = chapterTitle(BOOK.chapters[state.chapter]);
+  const title = chapterTitle(state.chapter);
   $('#topbar-chap').textContent = title;
   $('#foot-chap').textContent = title;
   $('#foot-page').textContent = (curPage+1) + ' / ' + Math.max(1, pages.length);
@@ -538,7 +561,7 @@ async function showChapter(idx, ratio){
     if(state.mode === 'paged'){
       pages = paginate(idx, blocks);
       curPage = pageFromRatio(ratio);
-      $('#page-over').innerHTML = pages[curPage] || '';
+      $('#page-over').innerHTML = pages[curPage].html || '';
       $('#page-under').innerHTML = '';
       $('#scroll-area').scrollTop = 0;
     }else{
@@ -572,7 +595,7 @@ async function turnTo(chap, page, dir){
       $('#scroll-content').innerHTML = renderBlocks(blocks);
     }
     page = Math.max(0, Math.min(targetPages.length-1, page));
-    const html = targetPages[page] || '';
+    const html = (targetPages[page] && targetPages[page].html) || '';
     animating = false; // slideTurn 内部自行管理
     await slideTurn(html, dir);
     state.chapter = chap;
@@ -609,7 +632,7 @@ async function relayout(){
     const blocks = await loadBlocks(state.chapter);
     pages = paginate(state.chapter, blocks);
     curPage = pageFromRatio(r);
-    $('#page-over').innerHTML = pages[curPage] || '';
+    $('#page-over').innerHTML = pages[curPage].html || '';
     $('#foot-page').textContent = (curPage+1) + ' / ' + Math.max(1, pages.length);
     saveState();
   }catch(e){/* 忽略 */}
@@ -683,24 +706,153 @@ function buildCatalog(){
   $('#topbar .book').textContent = BOOK.series + '：' + BOOK.volume;
   $('#drawer .head .t').textContent = BOOK.volume;   // 目录标题 = 部名
   $('#drawer-sub').textContent = BOOK.series + ' · 共 ' + BOOK.chapters.length + ' 章';
+  renderCatalogItems();
+}
+function renderCatalogItems(){
   const box = $('#catalog');
   box.innerHTML = '';
-  BOOK.chapters.forEach((file, i)=>{
+  BOOK.chapters.forEach((_, i)=>{
     const div = document.createElement('div');
     div.className = 'item';
-    div.textContent = chapterTitle(file);
+    div.textContent = String(i+1).padStart(2,'0') + '  ' + chapterTitle(i);
     div.addEventListener('click', ()=>{
       closePanels(); hideUI();
       showChapter(i, 0);
     });
     box.appendChild(div);
   });
+  markCatalogCurrent();
 }
 function markCatalogCurrent(){
   document.querySelectorAll('#catalog .item').forEach((el,i)=>{
     el.classList.toggle('cur', i === state.chapter);
   });
 }
+
+/* ================= 书内搜索 ================= */
+function markQuery(rawText, q){
+  const esc = escapeHtml(rawText);
+  if(!q) return esc;
+  const escQ = escapeHtml(q);
+  if(!escQ) return esc;
+  const re = new RegExp(escQ.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
+  return esc.replace(re, m => '<mark>' + m + '</mark>');
+}
+function highlightBlock(b, q){
+  const inner = markQuery(b.x, q);
+  if(b.t==='h1') return '<h1>'+inner+'</h1>';
+  if(b.t==='h2') return '<h2>'+inner+'</h2>';
+  return '<p>'+inner+'</p>';
+}
+
+let searchSeq = 0;
+async function doSearch(q){
+  const seq = ++searchSeq;
+  const box = $('#catalog');
+  box.innerHTML = '<div class="sr-head">搜索中…</div>';
+  const groups = [];
+  let total = 0;
+  const ql = q.toLowerCase();
+  for(let ci=0; ci<BOOK.chapters.length; ci++){
+    let blocks;
+    try{ blocks = await loadBlocks(ci); }catch(e){ continue; }
+    if(seq !== searchSeq) return; // 已有更新的搜索
+    const items = [];
+    for(let bi=0; bi<blocks.length; bi++){
+      const text = blocks[bi].x;
+      const pos = text.toLowerCase().indexOf(ql);
+      if(pos >= 0){
+        const from = Math.max(0, pos-12);
+        const to = Math.min(text.length, pos + q.length + 18);
+        const snip = (from>0?'…':'') + text.slice(from, to) + (to<text.length?'…':'');
+        items.push({block: bi, html: markQuery(snip, q)});
+        total++;
+        if(total >= 300) break;
+      }
+    }
+    if(items.length) groups.push({chap: ci, items});
+    if(total >= 300) break;
+  }
+  if(seq !== searchSeq) return;
+  renderSearchResults(groups, total, q);
+}
+
+function renderSearchResults(groups, total, q){
+  const box = $('#catalog');
+  box.innerHTML = '';
+  const head = document.createElement('div');
+  head.className = 'sr-head';
+  head.textContent = total
+    ? ('共 ' + total + ' 处结果' + (total>=300 ? '（仅显示前 300）' : ''))
+    : ('没有找到「' + q + '」');
+  box.appendChild(head);
+  for(const g of groups){
+    for(const it of g.items){
+      const div = document.createElement('div');
+      div.className = 'sr-item';
+      div.innerHTML = '<div class="c">' + String(g.chap+1).padStart(2,'0') + ' ' + escapeHtml(chapterTitle(g.chap)) +
+                      '</div><div class="s2">' + it.html + '</div>';
+      div.addEventListener('click', ()=> jumpToBlock(g.chap, it.block, q));
+      box.appendChild(div);
+    }
+  }
+}
+
+/* 跳转到指定章节的指定段落，并高亮关键词 */
+async function jumpToBlock(chapIdx, blockIdx, q){
+  closePanels(); hideUI();
+  $('#search-input').blur();
+  try{
+    const blocks = await loadBlocks(chapIdx);
+    if(state.mode === 'paged'){
+      const pgs = paginate(chapIdx, blocks);
+      let p = 0;
+      for(let i=0; i<pgs.length; i++){ if(pgs[i].start <= blockIdx) p = i; else break; }
+      state.chapter = chapIdx; pages = pgs; curPage = p;
+      $('#scroll-content').innerHTML = renderBlocks(blocks);
+      const end = (p+1 < pgs.length) ? pgs[p+1].start : blocks.length;
+      let html = '';
+      for(let bi=pgs[p].start; bi<end; bi++){
+        html += highlightBlock(blocks[bi], bi === blockIdx ? q : null);
+      }
+      $('#page-over').innerHTML = html;
+      $('#page-under').innerHTML = '';
+      updateChrome(); saveState();
+    }else{
+      state.chapter = chapIdx;
+      $('#scroll-content').innerHTML = renderBlocks(blocks);
+      pages = []; curPage = 0;
+      updateChrome();
+      requestAnimationFrame(()=>{
+        const el = $('#scroll-content').children[blockIdx];
+        if(el){
+          el.innerHTML = markQuery(blocks[blockIdx].x, q);
+          el.scrollIntoView({block:'center'});
+        }
+        setTimeout(saveState, 500);
+      });
+    }
+  }catch(e){ toast('跳转失败：' + e.message); }
+}
+
+const searchInput = $('#search-input');
+let searchTimer = null;
+searchInput.addEventListener('input', ()=>{
+  const q = searchInput.value.trim();
+  $('#search-clear').classList.toggle('show', !!searchInput.value);
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(()=>{
+    if(!q){ searchSeq++; renderCatalogItems(); }
+    else doSearch(q);
+  }, 300);
+});
+$('#search-clear').addEventListener('click', ()=>{
+  searchInput.value = '';
+  $('#search-clear').classList.remove('show');
+  searchSeq++;
+  renderCatalogItems();
+  searchInput.focus();
+});
 
 /* ================= 事件绑定 ================= */
 $('#zone-prev').addEventListener('click', ()=>{ if(!uiVisible) prevPage(); });
@@ -785,14 +937,53 @@ if(document.fonts && document.fonts.ready){
   document.fonts.ready.then(()=>relayout());
 }
 
+/* ================= 章节自动发现（GitHub API） ================= */
+async function discoverChapters(){
+  const CACHE_KEY = 'xinhuo-chapters-v2';
+  let cached = null;
+  try{ cached = JSON.parse(localStorage.getItem(CACHE_KEY)); }catch(e){}
+  const fresh = cached && cached.list && cached.list.length && (Date.now() - cached.ts < 10*60*1000);
+
+  let list = fresh ? cached.list : null;
+  if(!list){
+    try{
+      const res = await fetch('https://api.github.com/repos/' + GITHUB.owner + '/' + GITHUB.repo + '/contents/' + encodeURIComponent(BOOK.dir));
+      if(res.ok){
+        const arr = await res.json();
+        if(Array.isArray(arr)){
+          const num = n => { const m = n.match(/^(\d+)/); return m ? parseInt(m[1],10) : 1e9; };
+          list = arr
+            .filter(x => x.name.endsWith('.md') && !x.name.startsWith('.'))
+            .sort((a,b)=> num(a.name) - num(b.name) || a.name.localeCompare(b.name))
+            .map(x => ({file: x.name, url: x.download_url || null}));
+        }
+      }
+    }catch(e){ list = null; }
+    if(list && list.length){
+      try{ localStorage.setItem(CACHE_KEY, JSON.stringify({ts: Date.now(), list})); }catch(e){}
+    }
+  }
+  // 网络失败时先用过期缓存，其次用内置备用清单
+  if(!list || !list.length){
+    if(cached && cached.list && cached.list.length) list = cached.list;
+    else list = FALLBACK_CHAPTERS.map(f => ({file: f, url: null}));
+  }
+  BOOK.chapters = list;
+}
+
 /* ================= 启动 ================= */
-if(location.protocol === 'file:'){
-  $('#loading').textContent = '请通过本地服务器或 GitHub Pages 访问（file:// 协议无法加载章节）';
-}else{
+(async function init(){
+  if(location.protocol === 'file:'){
+    $('#loading').textContent = '请通过本地服务器或 GitHub Pages 访问（file:// 协议无法加载章节）';
+    return;
+  }
+  await discoverChapters();
+  // 保存的章节号超出范围时收敛到最后一章
+  if(state.chapter >= BOOK.chapters.length) state.chapter = Math.max(0, BOOK.chapters.length - 1);
   buildCatalog();
   applySettings();
   showChapter(state.chapter, state.ratio);
-}
+})();
 </script>
 </body>
 </html>
