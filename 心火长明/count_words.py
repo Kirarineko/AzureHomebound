@@ -18,8 +18,6 @@ def is_excluded_file(p):
         return True
     if name.upper().startswith('LICENSE'):
         return True
-    if '大纲' in name:
-        return True
     return False
 
 HANZI_RE = re.compile(r'[\u4e00-\u9fff\u3400-\u4dbf]')
