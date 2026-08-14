@@ -159,34 +159,34 @@ body.mode-scroll #tap-layer .zone{flex:1}
 #drawer .item.cur{color:var(--accent);font-weight:600}
 
 /* ============ 设置面板 ============ */
-#sheet{
+.sheet{
   position:fixed;left:0;right:0;bottom:0;z-index:31;
   background:var(--panel-bg);border-radius:var(--radius) var(--radius) 0 0;
   padding:18px 20px calc(20px + env(safe-area-inset-bottom));
   transform:translateY(105%);transition:transform .28s ease,background .3s;
   max-height:76vh;overflow-y:auto;
 }
-#sheet.show{transform:translateY(0)}
-#sheet .row{margin-bottom:18px}
-#sheet .row:last-child{margin-bottom:0}
-#sheet .label{font-size:12.5px;color:var(--muted);margin-bottom:9px}
-#sheet .opts{display:flex;gap:10px}
-#sheet .opt{
+.sheet.show{transform:translateY(0)}
+.sheet .row{margin-bottom:18px}
+.sheet .row:last-child{margin-bottom:0}
+.sheet .label{font-size:12.5px;color:var(--muted);margin-bottom:9px}
+.sheet .opts{display:flex;gap:10px}
+.sheet .opt{
   flex:1;padding:9px 0;text-align:center;font-size:14px;cursor:pointer;
   border:1px solid var(--border);border-radius:8px;color:var(--bar-text);
   background:none;transition:all .15s;font-family:inherit;
 }
-#sheet .opt.on{border-color:var(--accent);color:var(--accent);font-weight:600}
-#sheet .opt.font-sans-demo{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif}
-#sheet .opt.font-serif-demo{font-family:"Noto Serif SC","Songti SC","SimSun",serif}
-#sheet .stepper{display:flex;align-items:center;gap:14px}
-#sheet .stepper button{
+.sheet .opt.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+.sheet .opt.font-sans-demo{font-family:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif}
+.sheet .opt.font-serif-demo{font-family:"Noto Serif SC","Songti SC","SimSun",serif}
+.sheet .stepper{display:flex;align-items:center;gap:14px}
+.sheet .stepper button{
   width:44px;height:36px;border:1px solid var(--border);border-radius:8px;
   background:none;color:var(--bar-text);font-size:16px;cursor:pointer;font-family:inherit;
 }
-#sheet .stepper .val{flex:1;text-align:center;font-size:15px}
-#sheet .swatch{width:40px;height:40px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex:none}
-#sheet .swatch.on{border-color:var(--accent)}
+.sheet .stepper .val{flex:1;text-align:center;font-size:15px}
+.sheet .swatch{width:40px;height:40px;border-radius:50%;border:2px solid transparent;cursor:pointer;flex:none}
+.sheet .swatch.on{border-color:var(--accent)}
 .sw-light{background:#f7f2e8}.sw-eye{background:#d3e4cf}.sw-dark{background:#2a2a2a}
 
 /* 目录内搜索 */
@@ -202,6 +202,36 @@ body.mode-scroll #tap-layer .zone{flex:1}
 .sr-item .s2{font-size:13.5px;color:var(--bar-text);line-height:1.65;word-break:break-all}
 .content mark, .sr-item mark{background:#f0c33c;color:inherit;border-radius:2px;padding:0 1px}
 html[data-theme="dark"] .content mark, html[data-theme="dark"] .sr-item mark{background:#8a6d1a}
+
+/* ============ 听书 ============ */
+.sheet .tin{
+  width:100%;padding:9px 12px;font-size:14px;font-family:inherit;
+  border:1px solid var(--border);border-radius:8px;background:none;color:var(--bar-text);
+  outline:none;user-select:text;-webkit-user-select:text;
+}
+.sheet .tin:focus{border-color:var(--accent)}
+.sheet .opts .tin{flex:1;min-width:0}
+.tts-cur{background:rgba(224,93,78,.13);border-radius:6px}
+html[data-theme="dark"] .tts-cur{background:rgba(224,93,78,.24)}
+#tts-bar{
+  position:fixed;left:50%;transform:translateX(-50%);
+  bottom:calc(18px + env(safe-area-inset-bottom));z-index:25;
+  display:none;align-items:center;gap:4px;
+  background:var(--bar-bg);color:var(--bar-text);
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  border:1px solid var(--border);border-radius:28px;
+  padding:6px 10px;box-shadow:0 4px 18px rgba(0,0,0,.18);
+  max-width:calc(100vw - 24px);
+}
+#tts-bar.show{display:flex}
+#tts-bar button{
+  border:none;background:none;color:var(--bar-text);cursor:pointer;
+  width:36px;height:36px;border-radius:50%;font-size:15px;font-family:inherit;
+  display:grid;place-items:center;flex:none;
+}
+#tts-bar button:hover{background:var(--hover)}
+#tts-bar #tts-speedbtn{width:auto;padding:0 10px;border-radius:16px;font-size:12.5px}
+#tts-status{font-size:12px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ============ 提示 ============ */
 #toast{
@@ -254,6 +284,7 @@ html[data-theme="dark"] .content mark, html[data-theme="dark"] .sr-item mark{bac
   <!-- 底栏 -->
   <footer id="bottombar" class="bar hidden">
     <button id="btn-catalog"><span class="ic">☰</span>目录</button>
+    <button id="btn-tts"><span class="ic">♪</span>听书</button>
     <button id="btn-mode"><span class="ic">⤢</span><span id="mode-label">滚动</span></button>
     <button id="btn-theme"><span class="ic">☾</span><span id="theme-label">夜间</span></button>
     <button id="btn-settings"><span class="ic">Aa</span>设置</button>
@@ -274,7 +305,7 @@ html[data-theme="dark"] .content mark, html[data-theme="dark"] .sr-item mark{bac
 </aside>
 
 <!-- 设置面板 -->
-<div id="sheet">
+<div id="sheet" class="sheet">
   <div class="row">
     <div class="label">字体</div>
     <div class="opts">
@@ -318,6 +349,61 @@ html[data-theme="dark"] .content mark, html[data-theme="dark"] .sr-item mark{bac
 <div id="mask"></div>
 <div id="toast"></div>
 <div id="loading">加载中…</div>
+
+<!-- 听书悬浮播放条 -->
+<div id="tts-bar">
+  <button id="tts-prev" title="上一段">«</button>
+  <button id="tts-play" title="播放/暂停">▶</button>
+  <button id="tts-next" title="下一段">»</button>
+  <button id="tts-speedbtn" title="语速">1x</button>
+  <span id="tts-status"></span>
+  <button id="tts-stop" title="停止">✕</button>
+</div>
+
+<!-- 听书设置面板 -->
+<div id="tts-sheet" class="sheet">
+  <div class="row">
+    <div class="label">接口类型</div>
+    <div class="opts">
+      <button class="opt" data-tts-type="mimo">MiMo v2.5</button>
+      <button class="opt" data-tts-type="openai">OpenAI 兼容</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="label">API 地址</div>
+    <input class="tin" id="tts-endpoint" type="text" spellcheck="false" autocomplete="off">
+  </div>
+  <div class="row">
+    <div class="label">API Key</div>
+    <input class="tin" id="tts-key" type="password" placeholder="仅保存在本机浏览器" spellcheck="false" autocomplete="off">
+  </div>
+  <div class="row">
+    <div class="label">模型 / 音色</div>
+    <div class="opts">
+      <input class="tin" id="tts-model" type="text" spellcheck="false" autocomplete="off">
+      <input class="tin" id="tts-voice" type="text" list="tts-voices" spellcheck="false" autocomplete="off">
+    </div>
+    <datalist id="tts-voices"></datalist>
+  </div>
+  <div class="row" id="tts-style-row">
+    <div class="label">朗读风格（可选，MiMo 专用，如「用温柔舒缓的声音朗读」）</div>
+    <input class="tin" id="tts-style" type="text" spellcheck="false" autocomplete="off">
+  </div>
+  <div class="row">
+    <div class="label">语速</div>
+    <div class="opts">
+      <button class="opt" data-speed="0.75">0.75x</button>
+      <button class="opt" data-speed="1">1x</button>
+      <button class="opt" data-speed="1.25">1.25x</button>
+      <button class="opt" data-speed="1.5">1.5x</button>
+      <button class="opt" data-speed="2">2x</button>
+    </div>
+  </div>
+  <div class="row">
+    <button class="opt on" id="tts-start" style="padding:12px 0">▶ 从当前位置开始听书</button>
+  </div>
+  <div class="label" style="text-align:center;margin-bottom:0">配置仅保存在本机浏览器（localStorage），不会上传到任何服务器</div>
+</div>
 
 <script>
 /* ================================================================
@@ -654,11 +740,11 @@ function hideUI(){
 function toggleUI(){ uiVisible ? hideUI() : showUI(); }
 function closePanels(){
   $('#drawer').classList.remove('show');
-  $('#sheet').classList.remove('show');
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));
   $('#mask').classList.remove('show');
 }
 function openDrawer(){
-  $('#sheet').classList.remove('show');
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));
   $('#drawer').classList.add('show');
   $('#mask').classList.add('show');
   const cur = $('#catalog .item.cur');
@@ -687,10 +773,10 @@ function applySettings(){
   $('#theme-label').textContent = themeMap[state.theme];
   $('#btn-theme .ic').textContent = iconMap[state.theme];
   $('#fs-val').textContent = state.fontSize;
-  document.querySelectorAll('#sheet [data-font]').forEach(b=>b.classList.toggle('on', b.dataset.font === state.font));
-  document.querySelectorAll('#sheet [data-lh]').forEach(b=>b.classList.toggle('on', Math.abs(parseFloat(b.dataset.lh) - state.lineHeight) < 0.01));
-  document.querySelectorAll('#sheet [data-theme-opt]').forEach(b=>b.classList.toggle('on', b.dataset.themeOpt === state.theme));
-  document.querySelectorAll('#sheet [data-mode]').forEach(b=>b.classList.toggle('on', b.dataset.mode === state.mode));
+  document.querySelectorAll('.sheet [data-font]').forEach(b=>b.classList.toggle('on', b.dataset.font === state.font));
+  document.querySelectorAll('.sheet [data-lh]').forEach(b=>b.classList.toggle('on', Math.abs(parseFloat(b.dataset.lh) - state.lineHeight) < 0.01));
+  document.querySelectorAll('.sheet [data-theme-opt]').forEach(b=>b.classList.toggle('on', b.dataset.themeOpt === state.theme));
+  document.querySelectorAll('.sheet [data-mode]').forEach(b=>b.classList.toggle('on', b.dataset.mode === state.mode));
 }
 
 function switchMode(mode){
@@ -854,6 +940,481 @@ $('#search-clear').addEventListener('click', ()=>{
   searchInput.focus();
 });
 
+/* ================= 听书（TTS） =================
+ * 支持两种协议：
+ * - mimo  ：MiMo v2.5，POST {endpoint}（chat/completions，stream:true），
+ *           整章文本放 assistant 消息一次性合成（避免句子间割裂），
+ *           SSE 流式返回 choices[0].delta.audio.data（base64 PCM16 24kHz mono），
+ *           Web Audio 按时间线调度实现无缝播放；章节粒度控制
+ *          （整章连播，不做段落级高亮/定位，仅章节间自动跳转）
+ * - openai：通用 OpenAI 兼容 POST {endpoint}（/audio/speech 形式），
+ *           {model, input, voice, response_format}，返回音频二进制，逐段播放
+ * 配置仅保存在 localStorage（xinhuo-tts-v1）。
+ * ============================================================== */
+const TTS_LS_KEY = 'xinhuo-tts-v1';
+const TTS_PRESETS = {
+  mimo: {
+    endpoint: 'https://api.xiaomimimo.com/v1/chat/completions',
+    model: 'mimo-v2.5-tts',
+    voices: ['冰糖','茉莉','苏打','白桦','mimo_default']
+  },
+  openai: {
+    endpoint: 'https://api.openai.com/v1/audio/speech',
+    model: 'gpt-4o-mini-tts',
+    voices: ['alloy','ash','coral','echo','fable','nova','onyx','sage','shimmer']
+  }
+};
+const ttsCfg = Object.assign({
+  type: 'mimo',
+  endpoint: TTS_PRESETS.mimo.endpoint,
+  apiKey: '',
+  model: TTS_PRESETS.mimo.model,
+  voice: TTS_PRESETS.mimo.voices[0],
+  speed: 1,
+  style: ''
+}, loadTtsCfg());
+
+function loadTtsCfg(){ try{ return JSON.parse(localStorage.getItem(TTS_LS_KEY)) || {}; }catch(e){ return {}; } }
+function saveTtsCfg(){ try{ localStorage.setItem(TTS_LS_KEY, JSON.stringify(ttsCfg)); }catch(e){} }
+
+const ttsAudio = new Audio();
+const tts = { active:false, playing:false, engine:'paragraph', blocks:null, blockIdx:0, token:0, cache:new Map() };
+
+function ttsErrMsg(e){
+  const m = (e && e.message) || String(e);
+  if(/Failed to fetch|NetworkError|Load failed/i.test(m)) return '网络/CORS 错误，请检查 API 地址，或确认该服务商允许网页直接调用';
+  return m;
+}
+
+/* openai 兼容协议：/audio/speech 逐段请求（mimo 协议走下方流式整章引擎） */
+async function ttsFetchAudio(text){
+  const headers = {'Content-Type':'application/json'};
+  if(ttsCfg.apiKey) headers['Authorization'] = 'Bearer ' + ttsCfg.apiKey;
+  const res = await fetch(ttsCfg.endpoint, {
+    method:'POST', headers,
+    body: JSON.stringify({model: ttsCfg.model, input: text, voice: ttsCfg.voice, response_format:'mp3'})
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()).slice(0,150));
+  return await res.blob();
+}
+
+/* ---------- MiMo 流式整章引擎（SSE + Web Audio） ---------- */
+const TTS_SAMPLE_RATE = 24000;
+let ttsAC = null; // AudioContext，首次点击时创建
+
+const stm = {
+  chunks: [],        // 已接收的 Float32Array 音频块
+  samples: 0,        // 已接收采样总数
+  sources: [],       // 已调度的音源节点
+  nextTime: 0,       // 下一块音频的调度时间（AudioContext 时钟）
+  anchorSample: 0,   // 播放位置锚点：采样数
+  anchorTime: 0,     // 锚点对应的 AudioContext 时间
+  rate: 1,           // 播放倍速
+  done: false,       // 流是否结束
+  timer: null,       // 状态/结束轮询
+  controller: null   // fetch AbortController
+};
+
+function pcmB64ToF32(b64){
+  const bin = atob(b64);
+  const n = bin.length >> 1;
+  const out = new Float32Array(n);
+  for(let i=0;i<n;i++){
+    let v = bin.charCodeAt(i*2) | (bin.charCodeAt(i*2+1) << 8);
+    if(v >= 32768) v -= 65536;
+    out[i] = v / 32768;
+  }
+  return out;
+}
+
+/* 当前播放位置（秒） */
+function stmPlayhead(){
+  if(!ttsAC) return 0;
+  return stm.anchorSample / TTS_SAMPLE_RATE +
+         Math.max(0, ttsAC.currentTime - stm.anchorTime) * stm.rate;
+}
+
+/* 把一块 PCM 排到时间线上（无缝衔接） */
+function stmSchedule(f32){
+  if(!f32.length) return;
+  stm.chunks.push(f32);
+  stm.samples += f32.length;
+  const buf = ttsAC.createBuffer(1, f32.length, TTS_SAMPLE_RATE);
+  buf.getChannelData(0).set(f32);
+  const src = ttsAC.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = stm.rate;
+  src.connect(ttsAC.destination);
+  const t = Math.max(stm.nextTime, ttsAC.currentTime + 0.03);
+  src.start(t);
+  stm.nextTime = t + buf.duration / stm.rate;
+  stm.sources.push(src);
+  if(stm.sources.length > 64){
+    src.onended = ()=>{ const i = stm.sources.indexOf(src); if(i>=0) stm.sources.splice(i,1); };
+  }
+}
+
+/* 跳转到指定采样位置：停掉已调度音源，把 seek 点之后的缓冲重新拼接调度 */
+function stmSeek(sampleOffset){
+  for(const s of stm.sources){ try{ s.stop(); }catch(e){} }
+  stm.sources = [];
+  sampleOffset = Math.max(0, Math.min(sampleOffset, stm.samples));
+  const tail = stm.samples - sampleOffset;
+  if(tail > 0){
+    const merged = new Float32Array(tail);
+    let skip = sampleOffset, off = 0;
+    for(const c of stm.chunks){
+      if(skip >= c.length){ skip -= c.length; continue; }
+      const part = c.subarray(skip);
+      merged.set(part, off); off += part.length; skip = 0;
+    }
+    const buf = ttsAC.createBuffer(1, merged.length, TTS_SAMPLE_RATE);
+    buf.getChannelData(0).set(merged);
+    const src = ttsAC.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = stm.rate;
+    src.connect(ttsAC.destination);
+    const t = ttsAC.currentTime + 0.05;
+    src.start(t);
+    stm.sources.push(src);
+    stm.anchorSample = sampleOffset;
+    stm.anchorTime = t;
+    stm.nextTime = t + merged.length / TTS_SAMPLE_RATE / stm.rate;
+  }else{
+    stm.anchorSample = sampleOffset;
+    stm.anchorTime = ttsAC.currentTime;
+    stm.nextTime = ttsAC.currentTime + 0.03;
+  }
+}
+
+/* SSE 流式请求：整章一次性合成，逐块调度播放 */
+async function stmFetchChapter(text){
+  const headers = {'Content-Type':'application/json'};
+  if(ttsCfg.apiKey) headers['Authorization'] = 'Bearer ' + ttsCfg.apiKey;
+  const messages = [];
+  if(ttsCfg.style) messages.push({role:'user', content: ttsCfg.style});
+  messages.push({role:'assistant', content: text});
+  const res = await fetch(ttsCfg.endpoint, {
+    method:'POST', headers,
+    body: JSON.stringify({model: ttsCfg.model, messages, audio:{format:'pcm16', voice: ttsCfg.voice}, stream: true}),
+    signal: stm.controller.signal
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status + ' ' + (await res.text()).slice(0,150));
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = '';
+  for(;;){
+    const {done, value} = await reader.read();
+    if(done) break;
+    buf += decoder.decode(value, {stream:true});
+    let idx;
+    while((idx = buf.indexOf('\n')) >= 0){
+      const line = buf.slice(0, idx).trim();
+      buf = buf.slice(idx+1);
+      if(!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if(payload === '[DONE]'){ stm.done = true; return; }
+      try{
+        const json = JSON.parse(payload);
+        const audio = json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.audio;
+        if(audio && audio.data) stmSchedule(pcmB64ToF32(audio.data));
+      }catch(e){/* 忽略坏行 */}
+    }
+  }
+  stm.done = true;
+}
+
+/* 轮询：刷新状态、检测本章播放结束 */
+function stmTick(){
+  if(!tts.active || tts.engine !== 'stream') return;
+  const played = stmPlayhead();
+  const buffered = stm.samples / TTS_SAMPLE_RATE;
+  $('#tts-status').textContent = (stm.done ? '' : '合成中·') + Math.floor(played) + 's / ' + Math.floor(buffered) + 's';
+  if(stm.done && played >= buffered - 0.1){
+    clearInterval(stm.timer);
+    ttsNextChapter();
+  }
+}
+
+/* 启动/重启整章流式播放（固定从本章开头开始） */
+async function ttsStartStreamFrom(){
+  const token = ++tts.token;
+  if(stm.controller){ try{ stm.controller.abort(); }catch(e){} }
+  clearInterval(stm.timer);
+  for(const s of stm.sources){ try{ s.stop(); }catch(e){} }
+  stm.sources = []; stm.chunks = []; stm.samples = 0; stm.done = false;
+  stm.rate = ttsCfg.speed;
+  if(!ttsAC) ttsAC = new (window.AudioContext || window.webkitAudioContext)();
+  await ttsAC.resume().catch(()=>{});
+  stm.anchorSample = 0;
+  stm.anchorTime = ttsAC.currentTime;
+  stm.nextTime = ttsAC.currentTime + 0.05;
+  $('#tts-status').textContent = '合成中…';
+  stm.timer = setInterval(stmTick, 400);
+  stm.controller = new AbortController();
+  const text = tts.blocks.map(b=>b.x).join('\n');
+  stmFetchChapter(text).catch(e=>{
+    if(token !== tts.token) return;
+    stm.done = true;
+    if(stm.samples === 0){
+      $('#tts-status').textContent = '出错';
+      ttsSetPlayIcon(false);
+      toast('语音合成失败：' + ttsErrMsg(e));
+    }
+  });
+  ttsSetPlayIcon(true);
+}
+
+/* 倍速：两套引擎通用 */
+function ttsApplySpeed(s){
+  ttsCfg.speed = s;
+  ttsAudio.playbackRate = s;
+  if(tts.active && tts.engine === 'stream' && ttsAC){
+    const ph = stmPlayhead();
+    stm.rate = s;
+    stmSeek(Math.floor(ph * TTS_SAMPLE_RATE));
+  }
+  saveTtsCfg(); applyTtsUI();
+}
+
+/* ---------- 播放引擎 ---------- */
+function ttsSetPlayIcon(playing){
+  tts.playing = playing;
+  $('#tts-play').textContent = playing ? '❚❚' : '▶';
+}
+
+function ttsBlockHtml(b, active){
+  const cls = active ? ' class="tts-cur"' : '';
+  if(b.t==='h1') return '<h1'+cls+'>'+escapeHtml(b.x)+'</h1>';
+  if(b.t==='h2') return '<h2'+cls+'>'+escapeHtml(b.x)+'</h2>';
+  return '<p'+cls+'>'+escapeHtml(b.x)+'</p>';
+}
+
+/* 高亮当前朗读段落，并让页面跟随朗读位置 */
+function ttsRenderHighlight(){
+  if(!tts.blocks) return;
+  if(state.mode === 'paged'){
+    if(!pages.length) return;
+    let p = 0;
+    for(let i=0;i<pages.length;i++){ if(pages[i].start <= tts.blockIdx) p = i; else break; }
+    curPage = p;
+    const end = (p+1 < pages.length) ? pages[p+1].start : tts.blocks.length;
+    let html = '';
+    for(let bi=pages[p].start; bi<end; bi++) html += ttsBlockHtml(tts.blocks[bi], bi===tts.blockIdx);
+    $('#page-over').innerHTML = html;
+    $('#page-under').innerHTML = '';
+    $('#foot-page').textContent = (p+1) + ' / ' + Math.max(1, pages.length);
+  }else{
+    const kids = $('#scroll-content').children;
+    for(let i=0;i<kids.length;i++) kids[i].classList.toggle('tts-cur', i===tts.blockIdx);
+    const el = kids[tts.blockIdx];
+    if(el) el.scrollIntoView({block:'center', behavior:'smooth'});
+  }
+}
+function ttsClearHighlight(){
+  if(state.mode === 'paged'){
+    if(pages.length && pages[curPage]) $('#page-over').innerHTML = pages[curPage].html || '';
+  }else{
+    for(const el of document.querySelectorAll('#scroll-content .tts-cur')) el.classList.remove('tts-cur');
+  }
+}
+
+function currentStartBlock(){
+  if(state.mode === 'paged'){
+    return pages.length ? pages[curPage].start : 0;
+  }
+  const area = $('#scroll-area');
+  const kids = $('#scroll-content').children;
+  for(let i=0;i<kids.length;i++){
+    if(kids[i].offsetTop + kids[i].offsetHeight > area.scrollTop) return i;
+  }
+  return 0;
+}
+
+async function ttsPlayBlock(i){
+  const token = ++tts.token;
+  tts.blockIdx = i;
+  $('#tts-status').textContent = '第 ' + (i+1) + '/' + tts.blocks.length + ' 段';
+  ttsRenderHighlight();
+  try{
+    const key = state.chapter + ':' + i;
+    let url = tts.cache.get(key);
+    if(!url){
+      $('#tts-status').textContent = '合成中… ' + (i+1) + '/' + tts.blocks.length;
+      const blob = await ttsFetchAudio(tts.blocks[i].x);
+      url = URL.createObjectURL(blob);
+      tts.cache.set(key, url);
+    }
+    if(token !== tts.token) return;
+    $('#tts-status').textContent = '第 ' + (i+1) + '/' + tts.blocks.length + ' 段';
+    ttsAudio.src = url;
+    ttsAudio.playbackRate = ttsCfg.speed;
+    await ttsAudio.play();
+    if(token !== tts.token) return;
+    ttsSetPlayIcon(true);
+    ttsPrefetch(i+1);
+  }catch(e){
+    if(token !== tts.token) return;
+    ttsSetPlayIcon(false);
+    $('#tts-status').textContent = '出错';
+    toast('语音合成失败：' + ttsErrMsg(e));
+  }
+}
+function ttsPrefetch(i){
+  if(!tts.blocks || i >= tts.blocks.length) return;
+  const key = state.chapter + ':' + i;
+  if(tts.cache.has(key)) return;
+  ttsFetchAudio(tts.blocks[i].x)
+    .then(blob => tts.cache.set(key, URL.createObjectURL(blob)))
+    .catch(()=>{});
+}
+
+async function ttsNextChapter(){
+  if(state.chapter >= BOOK.chapters.length-1){ ttsStop(); toast('已读完最后一章'); return; }
+  $('#tts-status').textContent = '加载下一章…';
+  await showChapter(state.chapter+1, 0);
+  tts.blocks = await loadBlocks(state.chapter);
+  tts.blockIdx = 0;
+  ttsMediaSession();
+  if(tts.engine === 'stream') ttsStartStreamFrom();
+  else ttsPlayBlock(0);
+}
+
+async function ttsStart(){
+  if(!ttsCfg.apiKey){ toast('请先填写 API Key'); openTtsSheet(); return; }
+  if(tts.active) ttsStop();   // 先停掉可能正在进行的播放
+  try{ tts.blocks = await loadBlocks(state.chapter); }
+  catch(e){ toast('章节加载失败：' + e.message); return; }
+  tts.blockIdx = currentStartBlock();
+  tts.active = true;
+  tts.engine = ttsCfg.type === 'mimo' ? 'stream' : 'paragraph';
+  $('#tts-bar').classList.add('show');
+  ttsMediaSession();
+  if(tts.engine === 'stream') ttsStartStreamFrom();
+  else ttsPlayBlock(tts.blockIdx);
+}
+function ttsStop(){
+  tts.token++;
+  tts.active = false;
+  // 流式引擎清理
+  if(stm.controller){ try{ stm.controller.abort(); }catch(e){} }
+  clearInterval(stm.timer);
+  for(const s of stm.sources){ try{ s.stop(); }catch(e){} }
+  stm.sources = []; stm.chunks = []; stm.samples = 0;
+  if(ttsAC) ttsAC.suspend().catch(()=>{});
+  // 逐段引擎清理
+  ttsAudio.pause();
+  ttsAudio.removeAttribute('src');
+  ttsAudio.load();
+  for(const u of tts.cache.values()) URL.revokeObjectURL(u);
+  tts.cache.clear();
+  $('#tts-bar').classList.remove('show');
+  ttsClearHighlight();
+  ttsSetPlayIcon(false);
+  if('mediaSession' in navigator){ try{ navigator.mediaSession.metadata = null; }catch(e){} }
+}
+function ttsToggle(){
+  if(!tts.active) return;
+  if(tts.engine === 'stream'){
+    if(!ttsAC) return;
+    if(ttsAC.state === 'running'){ ttsAC.suspend(); ttsSetPlayIcon(false); }
+    else{ ttsAC.resume(); ttsSetPlayIcon(true); }
+    return;
+  }
+  if(ttsAudio.paused){
+    ttsAudio.play().then(()=>ttsSetPlayIcon(true)).catch(e=>toast('播放失败：' + ttsErrMsg(e)));
+  }else{
+    ttsAudio.pause();
+    ttsSetPlayIcon(false);
+  }
+}
+function ttsSkip(d){
+  if(!tts.active || !tts.blocks) return;
+  // 流式整章模式下为章节粒度：« 重读本章，» 下一章
+  if(tts.engine === 'stream'){
+    if(d < 0){ stmSeek(0); toast('回到本章开头'); }
+    else ttsNextChapter();
+    return;
+  }
+  const ni = tts.blockIdx + d;
+  if(ni < 0){ toast('已经是第一段了'); return; }
+  if(ni >= tts.blocks.length){ ttsNextChapter(); return; }
+  ttsPlayBlock(ni);
+}
+function ttsMediaSession(){
+  if(!('mediaSession' in navigator)) return;
+  try{
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: chapterTitle(state.chapter),
+      artist: BOOK.series + '：' + BOOK.volume
+    });
+    navigator.mediaSession.setActionHandler('play', ttsToggle);
+    navigator.mediaSession.setActionHandler('pause', ttsToggle);
+    navigator.mediaSession.setActionHandler('previoustrack', ()=>ttsSkip(-1));
+    navigator.mediaSession.setActionHandler('nexttrack', ()=>ttsSkip(1));
+  }catch(e){}
+}
+
+ttsAudio.addEventListener('ended', ()=>{
+  if(!tts.active || tts.engine !== 'paragraph' || !tts.blocks) return;
+  if(tts.blockIdx + 1 < tts.blocks.length) ttsPlayBlock(tts.blockIdx + 1);
+  else ttsNextChapter();
+});
+
+/* ---------- 听书设置界面 ---------- */
+function openTtsSheet(){
+  $('#drawer').classList.remove('show');
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));
+  $('#tts-sheet').classList.add('show');
+  $('#mask').classList.add('show');
+}
+function applyTtsUI(){
+  document.querySelectorAll('[data-tts-type]').forEach(b=>b.classList.toggle('on', b.dataset.ttsType === ttsCfg.type));
+  $('#tts-endpoint').value = ttsCfg.endpoint;
+  $('#tts-key').value = ttsCfg.apiKey;
+  $('#tts-model').value = ttsCfg.model;
+  $('#tts-voice').value = ttsCfg.voice;
+  $('#tts-style').value = ttsCfg.style;
+  $('#tts-style-row').style.display = ttsCfg.type === 'mimo' ? '' : 'none';
+  const dl = $('#tts-voices');
+  dl.innerHTML = '';
+  (TTS_PRESETS[ttsCfg.type].voices || []).forEach(v=>{
+    const o = document.createElement('option');
+    o.value = v;
+    dl.appendChild(o);
+  });
+  document.querySelectorAll('#tts-sheet [data-speed]').forEach(b=>b.classList.toggle('on', parseFloat(b.dataset.speed) === ttsCfg.speed));
+  $('#tts-speedbtn').textContent = ttsCfg.speed + 'x';
+  $('#tts-start').textContent = ttsCfg.type === 'mimo' ? '▶ 从本章开头开始听书' : '▶ 从当前位置开始听书';
+}
+
+$('#btn-tts').addEventListener('click', openTtsSheet);
+$('#tts-start').addEventListener('click', ()=>{ closePanels(); hideUI(); ttsStart(); });
+$('#tts-play').addEventListener('click', ttsToggle);
+$('#tts-stop').addEventListener('click', ttsStop);
+$('#tts-prev').addEventListener('click', ()=>ttsSkip(-1));
+$('#tts-next').addEventListener('click', ()=>ttsSkip(1));
+$('#tts-speedbtn').addEventListener('click', ()=>{
+  const S = [0.75, 1, 1.25, 1.5, 2];
+  const i = (S.indexOf(ttsCfg.speed) + 1) % S.length;
+  ttsApplySpeed(S[i]);
+});
+document.querySelectorAll('[data-tts-type]').forEach(b=>b.addEventListener('click', ()=>{
+  ttsCfg.type = b.dataset.ttsType;
+  const p = TTS_PRESETS[ttsCfg.type];
+  ttsCfg.endpoint = p.endpoint;
+  ttsCfg.model = p.model;
+  ttsCfg.voice = p.voices[0];
+  saveTtsCfg(); applyTtsUI();
+}));
+document.querySelectorAll('#tts-sheet [data-speed]').forEach(b=>b.addEventListener('click', ()=>{
+  ttsApplySpeed(parseFloat(b.dataset.speed));
+}));
+[['#tts-endpoint','endpoint'],['#tts-key','apiKey'],['#tts-model','model'],['#tts-voice','voice'],['#tts-style','style']]
+.forEach(([sel, key])=>{
+  $(sel).addEventListener('input', e=>{ ttsCfg[key] = e.target.value.trim(); saveTtsCfg(); });
+});
+
 /* ================= 事件绑定 ================= */
 $('#zone-prev').addEventListener('click', ()=>{ if(!uiVisible) prevPage(); });
 $('#zone-next').addEventListener('click', ()=>{ if(!uiVisible) nextPage(); });
@@ -896,16 +1457,16 @@ $('#btn-theme').addEventListener('click', ()=>{
 $('#mask').addEventListener('click', closePanels);
 
 // 设置面板
-document.querySelectorAll('#sheet [data-font]').forEach(b=>b.addEventListener('click', ()=>{
+document.querySelectorAll('.sheet [data-font]').forEach(b=>b.addEventListener('click', ()=>{
   state.font = b.dataset.font; applySettings(); relayout(); saveState();
 }));
-document.querySelectorAll('#sheet [data-lh]').forEach(b=>b.addEventListener('click', ()=>{
+document.querySelectorAll('.sheet [data-lh]').forEach(b=>b.addEventListener('click', ()=>{
   state.lineHeight = parseFloat(b.dataset.lh); applySettings(); relayout(); saveState();
 }));
-document.querySelectorAll('#sheet [data-theme-opt]').forEach(b=>b.addEventListener('click', ()=>{
+document.querySelectorAll('.sheet [data-theme-opt]').forEach(b=>b.addEventListener('click', ()=>{
   state.theme = b.dataset.themeOpt; applySettings(); saveState();
 }));
-document.querySelectorAll('#sheet [data-mode]').forEach(b=>b.addEventListener('click', ()=>{
+document.querySelectorAll('.sheet [data-mode]').forEach(b=>b.addEventListener('click', ()=>{
   switchMode(b.dataset.mode);
 }));
 $('#fs-minus').addEventListener('click', ()=>{
@@ -982,6 +1543,7 @@ async function discoverChapters(){
   if(state.chapter >= BOOK.chapters.length) state.chapter = Math.max(0, BOOK.chapters.length - 1);
   buildCatalog();
   applySettings();
+  applyTtsUI();
   showChapter(state.chapter, state.ratio);
 })();
 </script>
