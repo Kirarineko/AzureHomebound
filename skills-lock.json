@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "lieflat-less-ai-tone": {
+      "source": "larashero3-dotcom/lieflat-less-ai-tone",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "0bb6403a78204f967f0aed10ff5821032ee06981ee3c06455517488ce623e2f7"
+    }
+  }
+}

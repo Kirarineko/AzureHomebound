@@ -233,6 +233,13 @@ html[data-theme="dark"] .tts-cur{background:rgba(224,93,78,.24)}
 #tts-bar #tts-speedbtn{width:auto;padding:0 10px;border-radius:16px;font-size:12.5px}
 #tts-status{font-size:12px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
+/* ============ 评论 ============ */
+#cm-sheet{height:76vh;display:flex;flex-direction:column}
+#cm-sheet .row{margin-bottom:12px}
+#cm-wrap{flex:1;min-height:0;overflow-y:auto}
+#cm-tip{font-size:12.5px;color:var(--muted);text-align:center;margin-bottom:10px}
+#bottombar button .ic svg{vertical-align:-3px}
+
 /* ============ 提示 ============ */
 #toast{
   position:fixed;left:50%;top:22%;transform:translateX(-50%);z-index:50;
@@ -284,6 +291,7 @@ html[data-theme="dark"] .tts-cur{background:rgba(224,93,78,.24)}
   <!-- 底栏 -->
   <footer id="bottombar" class="bar hidden">
     <button id="btn-catalog"><span class="ic">☰</span>目录</button>
+    <button id="btn-comments"><span class="ic"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 11.5c0 4.14-4.03 7.5-9 7.5-1.12 0-2.21-.17-3.23-.49L4 20l1.35-3.94C4.12 14.85 3 13.28 3 11.5 3 7.36 7.03 4 12 4s9 3.36 9 7.5z"/></svg></span>评论</button>
     <button id="btn-tts"><span class="ic">♪</span>听书</button>
     <button id="btn-mode"><span class="ic">⤢</span><span id="mode-label">滚动</span></button>
     <button id="btn-theme"><span class="ic">☾</span><span id="theme-label">夜间</span></button>
@@ -349,6 +357,20 @@ html[data-theme="dark"] .tts-cur{background:rgba(224,93,78,.24)}
 <div id="mask"></div>
 <div id="toast"></div>
 <div id="loading">加载中…</div>
+
+<!-- 评论面板 -->
+<div id="cm-sheet" class="sheet">
+  <div class="row">
+    <div class="opts">
+      <button class="opt on" data-cm-scope="chapter">本章评论</button>
+      <button class="opt" data-cm-scope="book">全书书评</button>
+    </div>
+  </div>
+  <div id="cm-wrap">
+    <div id="cm-tip">评论由 giscus 提供，保存在本仓库的 GitHub Discussions，需登录 GitHub 账号</div>
+    <div id="giscus-box"></div>
+  </div>
+</div>
 
 <!-- 听书悬浮播放条 -->
 <div id="tts-bar">
@@ -635,6 +657,7 @@ function updateChrome(){
   $('#foot-page').textContent = (curPage+1) + ' / ' + Math.max(1, pages.length);
   document.title = title + ' · ' + BOOK.series + '：' + BOOK.volume;
   markCatalogCurrent();
+  cmRefresh(); // 评论面板打开时翻章，评论区跟着换章
 }
 
 async function showChapter(idx, ratio){
@@ -777,6 +800,7 @@ function applySettings(){
   document.querySelectorAll('.sheet [data-lh]').forEach(b=>b.classList.toggle('on', Math.abs(parseFloat(b.dataset.lh) - state.lineHeight) < 0.01));
   document.querySelectorAll('.sheet [data-theme-opt]').forEach(b=>b.classList.toggle('on', b.dataset.themeOpt === state.theme));
   document.querySelectorAll('.sheet [data-mode]').forEach(b=>b.classList.toggle('on', b.dataset.mode === state.mode));
+  if(cm.injected) cmRefresh(); // 主题切换时同步评论区配色
 }
 
 function switchMode(mode){
@@ -1415,6 +1439,98 @@ document.querySelectorAll('#tts-sheet [data-speed]').forEach(b=>b.addEventListen
   $(sel).addEventListener('input', e=>{ ttsCfg[key] = e.target.value.trim(); saveTtsCfg(); });
 });
 
+/* ================= 评论（giscus） =================
+ * 评论数据存放在 GitHub Discussions（General 分类），
+ * 页面与讨论的对应方式：mapping=specific，按 term 关联——
+ * - 本章评论：term = 「部名/章节文件名（去 .md）」，如 心火长明/0003_休养
+ * - 全书书评：term = 「系列名：部名｜全书书评」
+ * 注意：章节文件改名后该章会关联到新讨论（旧讨论仍留在仓库 Discussions 里）。
+ * 切换 term / 主题通过 postMessage setConfig 热更新，不重复加载 iframe。
+ * ============================================================== */
+const GISCUS = {
+  repo: 'Kirarineko/AzureHomebound',
+  repoId: 'R_kgDOTvRvvQ',
+  category: 'General',
+  categoryId: 'DIC_kwDOTvRvvc4DEQFe',
+};
+// 阅读器主题 -> giscus 主题
+const CM_THEME = { light: 'gruvbox_light', eye: 'light', dark: 'transparent_dark' };
+const cm = { scope: 'chapter', injected: false, curTerm: null, curTheme: null };
+
+function cmTerm(){
+  if(cm.scope === 'book') return BOOK.series + '：' + BOOK.volume + '｜全书书评';
+  return BOOK.volume + '/' + chapterFile(state.chapter).replace(/\.md$/, '');
+}
+
+function giscusPost(cfg){
+  const f = document.querySelector('#giscus-box iframe.giscus-frame');
+  if(!f || !f.contentWindow) return false;
+  f.contentWindow.postMessage({giscus: {setConfig: cfg}}, 'https://giscus.app');
+  return true;
+}
+
+function giscusInject(){
+  const box = $('#giscus-box');
+  box.innerHTML = '';
+  const s = document.createElement('script');
+  s.src = 'https://giscus.app/client.js';
+  s.async = true;
+  s.crossOrigin = 'anonymous';
+  s.setAttribute('data-repo', GISCUS.repo);
+  s.setAttribute('data-repo-id', GISCUS.repoId);
+  s.setAttribute('data-category', GISCUS.category);
+  s.setAttribute('data-category-id', GISCUS.categoryId);
+  s.setAttribute('data-mapping', 'specific');
+  s.setAttribute('data-term', cmTerm());
+  s.setAttribute('data-strict', '0');
+  s.setAttribute('data-reactions-enabled', '1');
+  s.setAttribute('data-emit-metadata', '1');
+  s.setAttribute('data-input-position', 'top');
+  s.setAttribute('data-theme', CM_THEME[state.theme] || 'light');
+  s.setAttribute('data-lang', 'zh-CN');
+  box.appendChild(s);
+  cm.injected = true;
+  cm.curTerm = cmTerm();
+  cm.curTheme = state.theme;
+}
+
+/* 面板打开期间，把当前 term/主题同步给 giscus */
+function cmRefresh(){
+  if(!$('#cm-sheet').classList.contains('show')) return;
+  if(!cm.injected){ giscusInject(); return; }
+  const term = cmTerm(), theme = CM_THEME[state.theme] || 'light';
+  const cfg = {};
+  if(term !== cm.curTerm) cfg.term = term;
+  if(theme !== cm.curTheme) cfg.theme = theme;
+  if(!Object.keys(cfg).length) return;
+  if(giscusPost(cfg)){
+    cm.curTerm = term;
+    cm.curTheme = theme;
+  }else{
+    giscusInject(); // iframe 尚未建好：直接按最新配置重建
+  }
+}
+
+/* giscus 就绪 / 讨论加载完成时会向父页面发消息，借机补齐可能被丢掉的配置变更 */
+window.addEventListener('message', e=>{
+  if(e.origin !== 'https://giscus.app') return;
+  cmRefresh();
+});
+
+function openComments(){
+  $('#drawer').classList.remove('show');
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));
+  $('#cm-sheet').classList.add('show');
+  $('#mask').classList.add('show');
+  if(!cm.injected) giscusInject(); else cmRefresh();
+}
+
+document.querySelectorAll('[data-cm-scope]').forEach(b=>b.addEventListener('click', ()=>{
+  cm.scope = b.dataset.cmScope;
+  document.querySelectorAll('[data-cm-scope]').forEach(x=>x.classList.toggle('on', x === b));
+  cmRefresh();
+}));
+
 /* ================= 事件绑定 ================= */
 $('#zone-prev').addEventListener('click', ()=>{ if(!uiVisible) prevPage(); });
 $('#zone-next').addEventListener('click', ()=>{ if(!uiVisible) nextPage(); });
@@ -1443,6 +1559,7 @@ document.addEventListener('keydown', e=>{
 
 // 底栏
 $('#btn-catalog').addEventListener('click', openDrawer);
+$('#btn-comments').addEventListener('click', openComments);
 $('#btn-settings').addEventListener('click', openSheet);
 $('#btn-back').addEventListener('click', hideUI);
 $('#btn-mode').addEventListener('click', ()=>{
