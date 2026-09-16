@@ -4,6 +4,10 @@
 Todo.md
 video
 todo
+# 合并正文输出目录
+导出/
 # WorkBuddy 项目数据
 .workbuddy/
+# 合并导出的全本文本
+导出/
 
