@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_NOVEL = '心火长明'
 OUT_DIR = ROOT / '导出'
 CHAPTER_RE = re.compile(r'^(\d+)_(.+)\.md$')
+TITLE_RE = re.compile(r'^#*\s*(?:第\s*[0-9零一二三四五六七八九十百千]+\s*[章回节]\s*)?')
 
 
 def load_chapters(novel_dir):
@@ -26,8 +27,13 @@ def load_chapters(novel_dir):
 
 
 def strip_title(text, title):
+    """去掉章节文件自带的标题行。
+
+    兼容三种写法：'# 第一章 落地过猛'、'第0000章 落地过猛'、以及光秃秃的'落地过猛'。
+    去掉井号后仍需与文件名里的标题一致才删这一行，避免误删正文首行。
+    """
     lines = text.strip().splitlines()
-    if lines and lines[0].strip().lstrip('#').strip() == title:
+    if lines and TITLE_RE.sub('', lines[0].strip()).strip() == title:
         lines = lines[1:]
     return '\n'.join(lines).strip()
 
