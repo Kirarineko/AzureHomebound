@@ -88,7 +88,7 @@ def main():
 
     print('篇幅前 10 的文件:')
     print(f'  {"文件":<52}{"字数":>10}')
-    for p, c in sorted(rows, key=lambda x: x[1]['zishu'], reverse=True)[:10]:
+    for p, c in sorted(rows, key=lambda x: x[1]['zishu'], reverse=True)[:100]:
         disp = str(p).replace('\\', '/')
         if len(disp) > 50:
             disp = '...' + disp[-49:]
